@@ -9,5 +9,5 @@ layout(set = 0, binding = 3) uniform colorBuffer
 };
 
 void main() {
-    fsout_Color = vec4(Color.rgb,(1.0-pow(abs(lineProperties.x*2-1),lineProperties.y*2.0)));
+    fsout_Color = vec4(Color.rgb,(1.0-pow(abs(lineProperties.x*2-1),lineProperties.y*1.5)));
 }
