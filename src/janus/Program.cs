@@ -14,12 +14,12 @@ using System.IO.Ports;
 using IniParser.Model;
 using IniParser;
 
-
 namespace Janus
 {
     public enum lineType {
         Straight,
-        Bezier,
+        QuadraticBezier,
+        CubicBezier,
         CatmullRom
     }
 
@@ -47,76 +47,66 @@ namespace Janus
         public RgbaFloat Color;
         public Vector2 UV;
         public float Layer;
-        //size of DotVertex = 8+16+8+4=36
     }
 
-    struct VertexPosition {
+    struct LineVertex {
         public Vector2 Position;
-        public Vector2 Properties;
-        public const uint SizeInBytes = 16;
-        public VertexPosition(Vector2 position, Vector2 properties) {
-            Position = position;
-            Properties = properties;
-        }
+        public RgbaFloat Color;
+        public float Edge;
+        public float Width;
+        public float Layer;
     }
     
     public interface IGenerator {
         void Generate(int seed);
     }
 
-    class Program
-    {
+    class Program {
         private static Sdl2Window _window;        
         private static GraphicsDevice _graphicsDevice;
         private static CommandList _commandList;
-        // private static DeviceBuffer _indexBuffer;
 
         //shared resources for viewport and camera
         private static DeviceBuffer _projectionBuffer;
         private static DeviceBuffer _cameraBuffer;
         private static DeviceBuffer _rotationBuffer;
         private static ResourceSet _viewportResourceSet;
-
-        private static ImGuiRenderer _imGuiRenderer;
-    
-        private static String[] scriptNames;
-        private static int _selectedScript;
-
+       
         // drawtype: Line
-        private static DeviceBuffer _vertexBuffer;
-        private static DeviceBuffer _colorBuffer;
-        private static Shader[] _shaders;
-        private static Pipeline _pipeline;
-        private static VertexPosition[] _quadVertices = new VertexPosition[0];
-        private static float _linewidth=3f;
-        private static int _vertexCount=0;
-
+        private static DeviceBuffer _lineVertexBuffer;
+        private static Shader[]     _lineShaders;
+        private static Pipeline     _linePipeline;
+        private static ResourceSet  _lineResourceSet;        
+        private static bool _recreateLineVerticeArray = true;   
 
         // drawtype: Dot
         private static DeviceBuffer _dotVertexBuffer;
         private static Shader[]     _dotShaders;
         private static Pipeline     _dotPipeline;
         private static ResourceSet  _dotResourceSet;
+        private static bool _recreateDotVerticeArray = true;   
 
         // private static SerialPort _serialPort;
         private static String[] serialPortNames;
         private static int _selectedSerialPort = 0;
         private static int[] baudrates = {300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 38400, 57600, 115200, 128000, 256000};
         private static int _selectedSerialBaudrate = 10;
- 
+
+        private static ImGuiRenderer _imGuiRenderer;
+        private static String[] scriptNames;
+        private static int _selectedScript;
+
         private static Vector3 _clearColor = new Vector3(0.0f, 0.0f, 0.0f);
         private static Vector3 _drawColor = new Vector3(0.3f, 0.6f, 0.4f);
         private static Vector2 _cameraPosition = new Vector2(0.0f, 0.0f);
         private static int _zoom = 13;
         private static float[] _zoomlevels = {1f,1.5f,2f,3.33f,5f,6.25f,8.33f,12.5f,16.67f,25f,33.33f,50f,66.67f,100f,150f,200f,300f,400f,500f,625f,833,1000f,1500f,2000f,3000f,4000f};
-
+        private static float _linewidth=3f;
         private static float _cameraRotation = 0.0f;
-        // private static int _cameraType = 1;
 
        // UI state
         private static bool _showSettingsWindow = true;
         private static bool _showImGuiDemoWindow = false;
-
         private static bool _openDrawSettingsHeader=false;
         private static bool _openCameraHeader=false;
         private static bool _openSerialMonitorHeader=false;
@@ -126,24 +116,18 @@ namespace Janus
 
         private static FileIniDataParser _iniParser;
         private static IniData _iniData;
-
-        // private static float _ticks=0;
-
         private static Vector4 textcolor1 = new Vector4(0.81f, 0.88f, 0.72f, 1.00f);
         private static Vector4 textcolor2 = new Vector4(0.0f,0.0f,0.0f,1.0f);
-
-
-        // private static UInt16[] _quadIndices = new UInt16[0];   
-        private static bool _recreateVerticeArray = true;   
-        private static bool _recreateDotVerticeArray = true;   
-
         private static bool _useRandomSeed = false;
-        private static int _seed=209284240;
 
+        private static int _seed=209284240;
         private static CodeCompiler _compiler;
 
-        static void Main(string[] args) {
 
+
+
+
+        static void Main(string[] args) {
             _compiler = new CodeCompiler();
 
             //load user settings
@@ -158,12 +142,12 @@ namespace Janus
 
             if (_iniData["Camera"]["PositionZ"]!=null) _cameraPosition = new Vector2(0f,0f);
             
-            if (_iniData["DrawColor"]["R"]!=null) _drawColor.X=float.Parse(_iniData["DrawColor"]["R"]);
-            if (_iniData["DrawColor"]["G"]!=null) _drawColor.Y=float.Parse(_iniData["DrawColor"]["G"]);
-            if (_iniData["DrawColor"]["B"]!=null) _drawColor.Z=float.Parse(_iniData["DrawColor"]["B"]);
-            if (_iniData["ClearColor"]["R"]!=null) _clearColor.X=float.Parse(_iniData["ClearColor"]["R"]);
-            if (_iniData["ClearColor"]["G"]!=null) _clearColor.Y=float.Parse(_iniData["ClearColor"]["G"]);
-            if (_iniData["ClearColor"]["B"]!=null) _clearColor.Z=float.Parse(_iniData["ClearColor"]["B"]);
+            if (_iniData["DrawColor"]["R"]!=null)  _drawColor.X = float.Parse(_iniData["DrawColor"]["R"]);
+            if (_iniData["DrawColor"]["G"]!=null)  _drawColor.Y = float.Parse(_iniData["DrawColor"]["G"]);
+            if (_iniData["DrawColor"]["B"]!=null)  _drawColor.Z = float.Parse(_iniData["DrawColor"]["B"]);
+            if (_iniData["ClearColor"]["R"]!=null) _clearColor.X= float.Parse(_iniData["ClearColor"]["R"]);
+            if (_iniData["ClearColor"]["G"]!=null) _clearColor.Y= float.Parse(_iniData["ClearColor"]["G"]);
+            if (_iniData["ClearColor"]["B"]!=null) _clearColor.Z= float.Parse(_iniData["ClearColor"]["B"]);
 
             if (_iniData["Line"]["Width"]!=null) _linewidth=float.Parse(_iniData["Line"]["Width"]);
 
@@ -213,26 +197,56 @@ namespace Janus
             // First we set up a resource set for common used resources such as viewport/projection buffers
             // we set up the viewport as 2 buffers holding our camera and projection transformation matrices.
             // To use matrices in the shader, we need to describe the buffer layout (uniform buffers for use by the vertex shader) for the pipeline and create a ResourceSet for the commandlist
+
             _projectionBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
             _cameraBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
             _rotationBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
-            _colorBuffer = factory.CreateBuffer(new BufferDescription(16, BufferUsage.UniformBuffer));
 
             ResourceLayout viewportResourceLayout = factory.CreateResourceLayout(new ResourceLayoutDescription(
                     new ResourceLayoutElementDescription("ProjectionBuffer", ResourceKind.UniformBuffer, ShaderStages.Vertex),
                     new ResourceLayoutElementDescription("CameraBuffer", ResourceKind.UniformBuffer, ShaderStages.Vertex),
-                    new ResourceLayoutElementDescription("RotationBuffer", ResourceKind.UniformBuffer, ShaderStages.Vertex),
-                    new ResourceLayoutElementDescription("ColorBuffer", ResourceKind.UniformBuffer, ShaderStages.Fragment)
+                    new ResourceLayoutElementDescription("RotationBuffer", ResourceKind.UniformBuffer, ShaderStages.Vertex)
             ));
-            _viewportResourceSet = factory.CreateResourceSet(new ResourceSetDescription(viewportResourceLayout,_projectionBuffer,_cameraBuffer, _rotationBuffer,_colorBuffer));
+            _viewportResourceSet = factory.CreateResourceSet(new ResourceSetDescription(viewportResourceLayout,_projectionBuffer,_cameraBuffer, _rotationBuffer));
 
 
             //// ------------------- Lines ------------------------- ////
+
+            //create a vertex buffer
+            _lineVertexBuffer = factory.CreateBuffer(new BufferDescription(0 * 36, BufferUsage.VertexBuffer));
+            _graphicsDevice.UpdateBuffer(_lineVertexBuffer, 0, new LineVertex[0]);
+
+            //describe the data layout
+            VertexLayoutDescription lineVertexBufferLayout = new VertexLayoutDescription(
+                new VertexElementDescription("Position", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2),
+                new VertexElementDescription("Color", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float4),
+                new VertexElementDescription("Edge", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float1),
+                new VertexElementDescription("Width", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float1),
+                new VertexElementDescription("Layer", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float1)
+            );
+            //load Shaders
+            _lineShaders = factory.CreateFromSpirv(new ShaderDescription(ShaderStages.Vertex,File.ReadAllBytes("Shaders/line_shader-vert.glsl"),"main"), new ShaderDescription(ShaderStages.Fragment,File.ReadAllBytes("Shaders/line_shader-frag.glsl"),"main"));
+            
+            //describe graphics pipeline
+            GraphicsPipelineDescription linePipelineDescription = new GraphicsPipelineDescription();
+            linePipelineDescription.Outputs = _graphicsDevice.MainSwapchain.Framebuffer.OutputDescription;
+            linePipelineDescription.BlendState = BlendStateDescription.SingleAlphaBlend;
+            linePipelineDescription.DepthStencilState = new DepthStencilStateDescription(depthTestEnabled: true, depthWriteEnabled: true, comparisonKind: ComparisonKind.LessEqual);
+            linePipelineDescription.RasterizerState = new RasterizerStateDescription(cullMode: FaceCullMode.Back,fillMode: PolygonFillMode.Solid,frontFace: FrontFace.Clockwise, depthClipEnabled: true, scissorTestEnabled: true);
+            linePipelineDescription.PrimitiveTopology = PrimitiveTopology.TriangleStrip;
+            linePipelineDescription.ShaderSet = new ShaderSetDescription(vertexLayouts: new VertexLayoutDescription[] { lineVertexBufferLayout },shaders: _lineShaders);
+
+            //add resource sets: general viewport and optional rendertype specific
+            linePipelineDescription.ResourceLayouts = new[] { viewportResourceLayout };
+            _linePipeline = factory.CreateGraphicsPipeline(linePipelineDescription);   
+
 
             //// ------------------- Dots ------------------------- ////
 
             //create a vertex buffer
             _dotVertexBuffer = factory.CreateBuffer(new BufferDescription(0 * 36, BufferUsage.VertexBuffer));
+            _graphicsDevice.UpdateBuffer(_dotVertexBuffer, 0, new DotVertex[0]);
+
             //describe the data layout
             VertexLayoutDescription dotVertexBufferLayout = new VertexLayoutDescription(
                 new VertexElementDescription("Position", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2),
@@ -242,6 +256,7 @@ namespace Janus
             );
             //load Shaders
             _dotShaders = factory.CreateFromSpirv(new ShaderDescription(ShaderStages.Vertex,File.ReadAllBytes("Shaders/dot_shader-vert.glsl"),"main"), new ShaderDescription(ShaderStages.Fragment,File.ReadAllBytes("Shaders/dot_shader-frag.glsl"),"main"));
+            
             //describe graphics pipeline
             GraphicsPipelineDescription dotPipelineDescription = new GraphicsPipelineDescription();
             dotPipelineDescription.Outputs = _graphicsDevice.MainSwapchain.Framebuffer.OutputDescription;
@@ -255,78 +270,9 @@ namespace Janus
             dotPipelineDescription.ResourceLayouts = new[] { viewportResourceLayout };
             _dotPipeline = factory.CreateGraphicsPipeline(dotPipelineDescription);    
 
-            DotVertex[] dotVertices = new DotVertex[0];
-            _graphicsDevice.UpdateBuffer(_dotVertexBuffer, 0, dotVertices);
-
-
-            ////  create vertexdata arrays, index arrays and transfer those to the Vertex and IndexDeviceBuffers (that will live on GPU)
-            // VertexPosition[] quadVertices = {};
-            // Vector2[] quadVertices = {};
-            // UInt16[] quadIndices = {};
-
-            _vertexBuffer = factory.CreateBuffer(new BufferDescription(0 * VertexPosition.SizeInBytes, BufferUsage.VertexBuffer));
-            // _vertexBuffer = factory.CreateBuffer(new BufferDescription(0 * 16, BufferUsage.VertexBuffer));
-            // _indexBuffer = factory.CreateBuffer(new BufferDescription(0 * sizeof(UInt16), BufferUsage.IndexBuffer));
-
-            //fill buffers with array (after which this data is available to GPU)
-            _graphicsDevice.UpdateBuffer(_vertexBuffer, 0, _quadVertices);
-            // _graphicsDevice.UpdateBuffer(_indexBuffer, 0, quadIndices);
-
-            //describe our vertexdata
-            VertexLayoutDescription vertexBufferLayout = new VertexLayoutDescription(
-                new VertexElementDescription("Position", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2),
-                new VertexElementDescription("lineProp", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2)
-                // new VertexElementDescription("Color", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float4)
-            );
-            /// SETUP Rendering
-
-            //load shaders
-            _shaders = factory.CreateFromSpirv(
-                new ShaderDescription(ShaderStages.Vertex,File.ReadAllBytes("Shaders/line_shader-vert.glsl"),"main"), 
-                new ShaderDescription(ShaderStages.Fragment,File.ReadAllBytes("Shaders/line_shader-frag.glsl"),"main")
-            );
-
-
-            //describe our graphics pipeline
-            GraphicsPipelineDescription pipelineDescription = new GraphicsPipelineDescription();
-            
-            //Our output in this case is the the graphics device framebuffer
-            pipelineDescription.Outputs = _graphicsDevice.MainSwapchain.Framebuffer.OutputDescription;
-
-            //The BlendState controls how the results from rendering are blended into the output textures.
-            pipelineDescription.BlendState = BlendStateDescription.SingleAlphaBlend;
-
-            //The DepthStencilState controls depth testing, writing and comparison
-            pipelineDescription.DepthStencilState = new DepthStencilStateDescription(
-                depthTestEnabled: true,
-                depthWriteEnabled: true,
-                comparisonKind: ComparisonKind.LessEqual);
-            
-            // The RasterizerState controls the rasterizer (culling,filling,clipping,etc of polygons)
-            pipelineDescription.RasterizerState = new RasterizerStateDescription(
-                cullMode: FaceCullMode.Back,
-                fillMode: PolygonFillMode.Solid,
-                frontFace: FrontFace.Clockwise,
-                depthClipEnabled: true,
-                scissorTestEnabled: true);
-            
-            //What topology do we use ? should match our indices
-            pipelineDescription.PrimitiveTopology = PrimitiveTopology.TriangleStrip;
-
-            //Here we tell the pipeline what shaders to use and how our vertexbufferdata is laid out
-            pipelineDescription.ShaderSet = new ShaderSetDescription(vertexLayouts: new VertexLayoutDescription[] { vertexBufferLayout },shaders: _shaders);
-            
-            //Here we tell the pipeline how other resources (for example our camera and projection matrices) are laid out
-            pipelineDescription.ResourceLayouts = new[] { viewportResourceLayout };
-            // pipelineDescription.ResourceLayouts = System.Array.Empty<ResourceLayout>();
-
-
-            //create pipeline now
-            _pipeline = factory.CreateGraphicsPipeline(pipelineDescription);
 
             //create the commandlist, which lets us record and execute graphics commands
             _commandList = factory.CreateCommandList();
-
 
             //create ImGuiRenderer
             _imGuiRenderer = new ImGuiRenderer(_graphicsDevice,_graphicsDevice.MainSwapchain.Framebuffer.OutputDescription, _window.Width,_window.Height,ColorSpaceHandling.Linear);          
@@ -350,10 +296,6 @@ namespace Janus
 
                     //recreate the buffers used by gui, prepare for drawing
                     _imGuiRenderer.UpdateGeometry(_graphicsDevice);
-
-                    //Update our geometry if needed, update vertex buffer ready for drawing
-                    UpdateGeometry();
-                    UpdateDotGeometry();
                     
                     //We stage all drawwing commands in the commandlist
                     _commandList.Begin();
@@ -366,18 +308,12 @@ namespace Janus
                     _commandList.UpdateBuffer(_projectionBuffer, 0, Matrix4x4.CreateOrthographic(_window.Width * 100f/_zoomlevels[_zoom],_window.Height * 100f/_zoomlevels[_zoom],0.1f,10000f));
                     _commandList.UpdateBuffer(_cameraBuffer, 0, Matrix4x4.CreateLookAt(new Vector3(_cameraPosition.X,_cameraPosition.Y,1000), new Vector3(_cameraPosition.X,_cameraPosition.Y,0f), Vector3.UnitY));
                     _commandList.UpdateBuffer(_rotationBuffer, 0, Matrix4x4.CreateFromAxisAngle(Vector3.UnitZ, _cameraRotation*0.01745329252f));
-                    _commandList.UpdateBuffer(_colorBuffer, 0, new Vector4(_drawColor,1.0f));
-                    
 
-                    //DRAW routine
-                    //set pipeline, graphicsresources, vertexbuffer (opt indexbuffer);
-                    //perform draws
-                    
-                    //each type of object (shaderset) will need its own pipeline
-                    //layer can be Z-coord
-                    //Draw Dots
-                    //
-                    DrawGeometry();
+                    //Update our geometry if needed and draw
+                    UpdateLineGeometry();
+                    DrawLines();
+
+                    UpdateDotGeometry();
                     DrawDots();
 
                     ////Draw UI
@@ -395,17 +331,24 @@ namespace Janus
             }
 
             //CLEAN UP
-            _pipeline.Dispose();
-            foreach (Shader shader in _shaders) {
+            _linePipeline.Dispose();
+            _lineVertexBuffer.Dispose();
+            foreach (Shader shader in _lineShaders) {
                 shader.Dispose();
             }
+
+            _dotPipeline.Dispose();
+            _dotVertexBuffer.Dispose();
+            foreach (Shader shader in _dotShaders) {
+                shader.Dispose();
+            }
+
             _cameraBuffer.Dispose();
             _projectionBuffer.Dispose();
             _rotationBuffer.Dispose();
+
             _imGuiRenderer.Dispose();        
             _commandList.Dispose();
-            _vertexBuffer.Dispose();
-            // _indexBuffer.Dispose();
             _graphicsDevice.Dispose();
 
             //DONE
@@ -425,7 +368,7 @@ namespace Janus
                     Data.DebugConsole.Add(("Scipt executed succesfully."));
                 }
                 _recreateDotVerticeArray=true;
-                _recreateVerticeArray=true;
+                _recreateLineVerticeArray=true;
             }
        }
 
@@ -462,25 +405,34 @@ namespace Janus
                 _graphicsDevice.UpdateBuffer(_dotVertexBuffer, 0, dotVertices);
                 _recreateDotVerticeArray=false;
             }
-
-
-
         }
-        private static void UpdateGeometry() {
-            if (_recreateVerticeArray) {
-                _vertexCount = 0;
-                List<Vector2> vertexLineData = new List<Vector2>();
-                List<Vector2> vertexLineProperties = new List<Vector2>();              
+
+        private static void UpdateLineGeometry() {
+            if (_recreateLineVerticeArray) {
+                int vCount = 0;
+                List<LineVertex> lineVertices = new List<LineVertex>();
+            
                 for(int l=0;l<Data.lines.Count;l++) {
                     if (Data.lines[l].type==lineType.Straight) {
                         for (int ctr = 0; ctr < Data.lines[l].lineData.Length; ctr++) {
+
+                            LineVertex v1 = new LineVertex();
+                            v1.Width=_linewidth;
+                            v1.Edge=0;
+                            v1.Color=new RgbaFloat(_drawColor.X,_drawColor.Y,_drawColor.Z,1.0f);
+
+                            LineVertex v2 = new LineVertex();
+                            v2.Width=_linewidth;
+                            v2.Edge=1;
+                            v2.Color=new RgbaFloat(_drawColor.X,_drawColor.Y,_drawColor.Z,1.0f); 
+
                             Vector2 vnorm;
                             //line start
                             if (ctr == 0) {
                                 vnorm = Vector2.Normalize(Vector2.Subtract(Data.lines[l].lineData[ctr+1],Data.lines[l].lineData[ctr]));
                                 Vector2 vperp = new Vector2(-vnorm.Y,vnorm.X);
-                                vertexLineData.Insert(_vertexCount + ctr*2  ,Data.lines[l].lineData[ctr]-vperp*_linewidth);
-                                vertexLineData.Insert(_vertexCount + ctr*2+1,Data.lines[l].lineData[ctr]+vperp*_linewidth);
+                                v1.Position = Data.lines[l].lineData[ctr]-vperp*_linewidth;
+                                v2.Position = Data.lines[l].lineData[ctr]+vperp*_linewidth;
                             }
 
                             if (ctr > 0 && ctr+1 < Data.lines[l].lineData.Length) {
@@ -489,24 +441,26 @@ namespace Janus
                                 vnorm = Vector2.Normalize(new Vector2((vnorm1.X+vnorm2.X),(vnorm1.Y+vnorm2.Y)));
                                 float len = _linewidth / Vector2.Dot(vnorm1,vnorm);
                                 Vector2 vperp = new Vector2(-vnorm.Y,vnorm.X);
-                              vertexLineData.Insert(_vertexCount + ctr*2  , Data.lines[l].lineData[ctr]-vperp*(len));                     
-                                vertexLineData.Insert(_vertexCount + ctr*2+1, Data.lines[l].lineData[ctr]+vperp*(len));                     
+                                v1.Position =  Data.lines[l].lineData[ctr]-vperp*(len);                     
+                                v2.Position =  Data.lines[l].lineData[ctr]+vperp*(len);                     
                             }
 
                             //line end
                             if (ctr+1 == Data.lines[l].lineData.Length) {
                                 vnorm = Vector2.Normalize(Vector2.Subtract(Data.lines[l].lineData[ctr],Data.lines[l].lineData[ctr-1]));
                                 Vector2 vperp = new Vector2(-vnorm.Y,vnorm.X);
-                                vertexLineData.Insert(_vertexCount + ctr*2  , Data.lines[l].lineData[ctr]-vperp*_linewidth);                     
-                                vertexLineData.Insert(_vertexCount + ctr*2+1, Data.lines[l].lineData[ctr]+vperp*_linewidth);                     
+                                v1.Position = Data.lines[l].lineData[ctr]-vperp*_linewidth;                     
+                                v2.Position = Data.lines[l].lineData[ctr]+vperp*_linewidth;                     
                             }
-                            vertexLineProperties.Insert(_vertexCount + ctr*2  ,new Vector2(0,_linewidth));
-                            vertexLineProperties.Insert(_vertexCount + ctr*2+1,new Vector2(1,_linewidth));
+
+                            lineVertices.Insert(vCount + ctr*2,v1);
+                            lineVertices.Insert(vCount + ctr*2+1,v2);
 
                         }   
-                        _vertexCount += Data.lines[l].lineData.Length*2;
-                    }        
-                    if (Data.lines[l].type==lineType.Bezier) {
+                        vCount += Data.lines[l].lineData.Length*2;
+                    }  
+                      
+                    if (Data.lines[l].type==lineType.CubicBezier) {
                         //generate points
                         Vector2[] points = new Vector2[500];
                         Vector2 A = Data.lines[l].lineData[0];
@@ -520,57 +474,56 @@ namespace Janus
                         }
 
                         for (int pctr = 0; pctr < points.Length; pctr++) {
+
+                            LineVertex v1 = new LineVertex();
+                            v1.Width=_linewidth;
+                            v1.Edge=0;
+                            v1.Color=new RgbaFloat(_drawColor.X,_drawColor.Y,_drawColor.Z,1.0f);
+
+                            LineVertex v2 = new LineVertex();
+                            v2.Width=_linewidth;
+                            v2.Edge=1;
+                            v2.Color=new RgbaFloat(_drawColor.X,_drawColor.Y,_drawColor.Z,1.0f); 
+
                             Vector2 vnorm;
                             //line start
                             if (pctr == 0) {
                                 vnorm = Vector2.Normalize(Vector2.Subtract(points[pctr+1],points[pctr]));
                                 Vector2 vperp = new Vector2(-vnorm.Y,vnorm.X);
-                                vertexLineData.Insert(_vertexCount + pctr*2  ,points[pctr]-vperp*_linewidth);
-                                vertexLineData.Insert(_vertexCount + pctr*2+1,points[pctr]+vperp*_linewidth);
+                                v1.Position = points[pctr]-vperp*_linewidth;
+                                v2.Position = points[pctr]+vperp*_linewidth;
                             }
 
                             if (pctr > 0 && pctr+1 < points.Length) {
                                 Vector2 vnorm1 = Vector2.Normalize(Vector2.Subtract(points[pctr],points[pctr-1])); //incoming line
                                 Vector2 vnorm2 = Vector2.Normalize(Vector2.Subtract(points[pctr+1],points[pctr])); //outgoing line
-                                
                                 vnorm = Vector2.Normalize(new Vector2((vnorm1.X+vnorm2.X),(vnorm1.Y+vnorm2.Y)));
                                 float len = _linewidth / Vector2.Dot(vnorm1,vnorm);
-
                                 Vector2 vperp = new Vector2(-vnorm.Y,vnorm.X);
-
-                                vertexLineData.Insert(_vertexCount + pctr*2  , points[pctr]-vperp*(len));                     
-                                vertexLineData.Insert(_vertexCount + pctr*2+1, points[pctr]+vperp*(len));                     
+                                v1.Position = points[pctr]-vperp*(len);                     
+                                v2.Position = points[pctr]+vperp*(len);                     
                             }
 
                             //line end
                             if (pctr+1 == points.Length) {
                                 vnorm = Vector2.Normalize(Vector2.Subtract(points[pctr],points[pctr-1]));
                                 Vector2 vperp = new Vector2(-vnorm.Y,vnorm.X);
-                                vertexLineData.Insert(_vertexCount + pctr*2  , points[pctr]-vperp*_linewidth);                     
-                                vertexLineData.Insert(_vertexCount + pctr*2+1, points[pctr]+vperp*_linewidth);                     
+                                v1.Position = points[pctr]-vperp*_linewidth;                     
+                                v2.Position = points[pctr]+vperp*_linewidth;                     
                             }
 
-                            vertexLineProperties.Insert(_vertexCount + pctr*2  ,new Vector2(0,_linewidth));
-                            vertexLineProperties.Insert(_vertexCount + pctr*2+1,new Vector2(1,_linewidth));
-
+                            lineVertices.Insert(vCount + pctr*2,v1);
+                            lineVertices.Insert(vCount + pctr*2+1,v2);
                         }   
-                        _vertexCount += points.Length*2;
-
+                        vCount += points.Length*2;
                     }
-
                 }
 
-                _graphicsDevice.DisposeWhenIdle(_vertexBuffer);
-                _vertexBuffer = _graphicsDevice.ResourceFactory.CreateBuffer(new BufferDescription((uint)_vertexCount * VertexPosition.SizeInBytes, BufferUsage.VertexBuffer));
+                _graphicsDevice.DisposeWhenIdle(_lineVertexBuffer);
+                _lineVertexBuffer = _graphicsDevice.ResourceFactory.CreateBuffer(new BufferDescription((uint)vCount * 36, BufferUsage.VertexBuffer));
 
-                _quadVertices = new VertexPosition[_vertexCount];
-                for (int i=0; i < _vertexCount; i++) {
-                    _quadVertices[i].Position = vertexLineData[i];
-                    _quadVertices[i].Properties = vertexLineProperties[i];
-                };
-
-                _graphicsDevice.UpdateBuffer(_vertexBuffer, 0, _quadVertices);
-                _recreateVerticeArray=false;
+                _graphicsDevice.UpdateBuffer(_lineVertexBuffer, 0, lineVertices.ToArray());
+                _recreateLineVerticeArray=false;
             }
         }
 
@@ -585,19 +538,17 @@ namespace Janus
                 _commandList.Draw(vertexCount:vLength,instanceCount:1,vertexStart:vStart,instanceStart:0);
                 vStart+=vLength;
             }
-
         }
 
-        private static void DrawGeometry() {
-            _commandList.SetPipeline(_pipeline);
+        private static void DrawLines() {
+            _commandList.SetPipeline(_linePipeline);
             _commandList.SetGraphicsResourceSet(0, _viewportResourceSet);
-            _commandList.SetVertexBuffer(0, _vertexBuffer);
-            // _commandList.SetIndexBuffer(_indexBuffer, IndexFormat.UInt16);
+            _commandList.SetVertexBuffer(0, _lineVertexBuffer);
 
             uint vStart = 0;
             uint vLength = 0;
             for(int l=0;l<Data.lines.Count;l++) {
-                if (Data.lines[l].type == lineType.Bezier) {
+                if (Data.lines[l].type == lineType.CubicBezier) {
                     vLength = (uint)Data.lines[l].lineData.Length*2*125;
                 }
                 if (Data.lines[l].type == lineType.Straight) {
@@ -693,7 +644,6 @@ namespace Janus
                             Console.Write("keyup: ");
                             Console.WriteLine(ke.Key);
                             Data.DebugConsole.Add("keyup: " + ke.Key.ToString());
-
                         }
                     }
                 }
@@ -776,7 +726,8 @@ namespace Janus
                         _iniData["DrawColor"]["R"]=_drawColor.X.ToString();
                         _iniData["DrawColor"]["G"]=_drawColor.Y.ToString();
                         _iniData["DrawColor"]["B"]=_drawColor.Z.ToString();
-                        _iniParser.WriteFile("Configuration.ini", _iniData);                  
+                        _iniParser.WriteFile("Configuration.ini", _iniData); 
+                        _recreateLineVerticeArray=true;                     
                     }        
 
                     ImGui.AlignTextToFramePadding();
@@ -785,7 +736,7 @@ namespace Janus
                     if(ImGui.DragFloat("##line", ref _linewidth,0.1f,0.1f,20f)) {
                         _iniData["Line"]["Width"]=_linewidth.ToString();
                         _iniParser.WriteFile("Configuration.ini", _iniData);   
-                        _recreateVerticeArray=true;                           
+                        _recreateLineVerticeArray=true;                           
                     };   
 
 

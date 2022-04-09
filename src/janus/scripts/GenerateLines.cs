@@ -12,12 +12,13 @@ public class GenerateLines : IGenerator {
         int count=2;
 
         Data.lines.Clear();
-
+        Data.dots.Clear();
+        
         for (int ctr = 0; ctr < count; ctr++) {
 
             Data.lines.Insert(ctr, new Line());
             // Data.lines[ctr].type = lineType.Straight;
-            Data.lines[ctr].type=lineType.Bezier;
+            Data.lines[ctr].type=lineType.CubicBezier;
 
             // int numpoints = Math.Max(4,(int) (_rand.NextSingle() * 4.0f));
             int numpoints = 4;
@@ -46,8 +47,5 @@ public class GenerateLines : IGenerator {
                 Data.lines[ctr].lineData[i] = new Vector2(ix,iy);
             }
         }
-        Console.WriteLine("hello from generator script 50");
-        Data.DebugConsole.Add("hello from generator script");
-        Data.DebugConsole.Add("--------------------------------------------------------");
     }
 }
