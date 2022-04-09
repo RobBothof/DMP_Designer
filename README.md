@@ -1,3 +1,3 @@
 # Janus
 
-Line generation and preview rendering for use with custom drawing machine.
+Line/movement generation and preview rendering engine for custom drawing machine.
