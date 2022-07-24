@@ -30,8 +30,9 @@ namespace Janus
             SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(SourceText.From(source), path: path);
             source.Dispose();
 
+
             // Console.WriteLine(syntaxTree.GetCompilationUnitRoot().
-            CSharpCompilation compilation = CSharpCompilation.Create(Path.GetRandomFileName(), syntaxTrees: new[] { syntaxTree }, references: _references, options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            CSharpCompilation compilation = CSharpCompilation.Create(Path.GetRandomFileName(), syntaxTrees: new[] { syntaxTree }, references: _references, options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary).WithAllowUnsafe(true));
 
             //get the scripts classname
             var model = compilation.GetSemanticModel(syntaxTree);

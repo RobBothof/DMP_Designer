@@ -14,8 +14,8 @@ using System.IO.Ports;
 using IniParser.Model;
 using IniParser;
 
-namespace Janus
-{
+namespace Janus {
+
     public enum lineType {
         Straight,
         QuadraticBezier,
@@ -460,21 +460,76 @@ namespace Janus
                         vCount += Data.lines[l].lineData.Length*2;
                     }  
                       
+                    if (Data.lines[l].type==lineType.QuadraticBezier) {
+                        //generate points
+                        Vector2[] points = new Vector2[300];
+                        Vector2 A = Data.lines[l].lineData[0];
+                        Vector2 B = Data.lines[l].lineData[1];
+                        Vector2 C = Data.lines[l].lineData[2];
+
+                        for (int p=0; p<300;p++) {
+                            float t = ((float)p) / 300f;
+                            points[p] = (1f-t)*(1f-t)*A + 2*(1f-t)*t*B + t*t*C;
+                        }
+                        for (int pctr = 0; pctr < points.Length; pctr++) {
+                            LineVertex v1 = new LineVertex();
+                            v1.Width=_linewidth;
+                            v1.Edge=0;
+                            v1.Color=new RgbaFloat(_drawColor.X,_drawColor.Y,_drawColor.Z,1.0f);
+
+                            LineVertex v2 = new LineVertex();
+                            v2.Width=_linewidth;
+                            v2.Edge=1;
+                            v2.Color=new RgbaFloat(_drawColor.X,_drawColor.Y,_drawColor.Z,1.0f); 
+
+                            Vector2 vnorm;
+                            //line start
+                            if (pctr == 0) {
+                                vnorm = Vector2.Normalize(Vector2.Subtract(points[pctr+1],points[pctr]));
+                                Vector2 vperp = new Vector2(-vnorm.Y,vnorm.X);
+                                v1.Position = points[pctr]-vperp*_linewidth;
+                                v2.Position = points[pctr]+vperp*_linewidth;
+                            }
+
+                            if (pctr > 0 && pctr+1 < points.Length) {
+                                Vector2 vnorm1 = Vector2.Normalize(Vector2.Subtract(points[pctr],points[pctr-1])); //incoming line
+                                Vector2 vnorm2 = Vector2.Normalize(Vector2.Subtract(points[pctr+1],points[pctr])); //outgoing line
+                                vnorm = Vector2.Normalize(new Vector2((vnorm1.X+vnorm2.X),(vnorm1.Y+vnorm2.Y)));
+                                float len = _linewidth / Vector2.Dot(vnorm1,vnorm);
+                                Vector2 vperp = new Vector2(-vnorm.Y,vnorm.X);
+                                v1.Position = points[pctr]-vperp*(len);                     
+                                v2.Position = points[pctr]+vperp*(len);                     
+                            }
+
+                            //line end
+                            if (pctr+1 == points.Length) {
+                                vnorm = Vector2.Normalize(Vector2.Subtract(points[pctr],points[pctr-1]));
+                                Vector2 vperp = new Vector2(-vnorm.Y,vnorm.X);
+                                v1.Position = points[pctr]-vperp*_linewidth;                     
+                                v2.Position = points[pctr]+vperp*_linewidth;                     
+                            }
+
+                            lineVertices.Insert(vCount + pctr*2,v1);
+                            lineVertices.Insert(vCount + pctr*2+1,v2);
+                        }   
+                        vCount += points.Length*2;
+
+                    }
+
                     if (Data.lines[l].type==lineType.CubicBezier) {
                         //generate points
-                        Vector2[] points = new Vector2[500];
+                        Vector2[] points = new Vector2[400];
                         Vector2 A = Data.lines[l].lineData[0];
                         Vector2 B = Data.lines[l].lineData[1];
                         Vector2 C = Data.lines[l].lineData[2];
                         Vector2 D = Data.lines[l].lineData[3];
 
-                        for (int p=0; p<500;p++) {
-                            float t = ((float)p) / 500f;
+                        for (int p=0; p<400;p++) {
+                            float t = ((float)p) / 400f;
                             points[p] = (1f-t)*(1f-t)*(1f-t)*A + 3*(1f-t)*(1f-t)*t*B + 3*(1f-t)*t*t*C + t*t*t*D;
                         }
 
                         for (int pctr = 0; pctr < points.Length; pctr++) {
-
                             LineVertex v1 = new LineVertex();
                             v1.Width=_linewidth;
                             v1.Edge=0;
@@ -549,7 +604,10 @@ namespace Janus
             uint vLength = 0;
             for(int l=0;l<Data.lines.Count;l++) {
                 if (Data.lines[l].type == lineType.CubicBezier) {
-                    vLength = (uint)Data.lines[l].lineData.Length*2*125;
+                    vLength = (uint)Data.lines[l].lineData.Length*2*100;
+                }
+                if (Data.lines[l].type == lineType.QuadraticBezier) {
+                    vLength = (uint)Data.lines[l].lineData.Length*2*100;
                 }
                 if (Data.lines[l].type == lineType.Straight) {
                     vLength = (uint)Data.lines[l].lineData.Length*2;
