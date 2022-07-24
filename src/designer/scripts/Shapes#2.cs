@@ -3,7 +3,7 @@ using System.IO;
 using System.Configuration;
 using System.Collections.Generic;
 using System.Numerics;
-using Janus;
+using Designer;
 
 public class Shapes_2 : IGenerator {
     public static Random _rand;

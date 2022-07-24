@@ -10,8 +10,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis.Text;
 
-namespace Janus
-{
+namespace Designer {
     public class CodeCompiler {
         private List<MetadataReference> _references;
 

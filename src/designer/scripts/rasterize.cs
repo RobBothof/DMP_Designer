@@ -3,7 +3,7 @@ using System.IO;
 using System.Configuration;
 using System.Collections.Generic;
 using System.Numerics;
-using Janus;
+using Designer;
 
 public class rasterize : IGenerator {
     public static Random _rand;

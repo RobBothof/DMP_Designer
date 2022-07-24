@@ -14,7 +14,7 @@ using System.IO.Ports;
 using IniParser.Model;
 using IniParser;
 
-namespace Janus {
+namespace Designer {
 
     public enum lineType {
         Straight,
@@ -167,7 +167,7 @@ namespace Janus {
 
             //create Window            
             SDL_WindowFlags flags = SDL_WindowFlags.OpenGL | SDL_WindowFlags.Resizable | SDL_WindowFlags.Shown;
-            _window = new Sdl2Window("Janus v0.1.0",1550,25,1000,1385,flags,false);
+            _window = new Sdl2Window("DMP Designer v0.1.0",1550,25,1000,1385,flags,false);
 
             Sdl2Native.SDL_ShowCursor(0);
             
