@@ -19,7 +19,6 @@ namespace Designer {
             foreach (var r in ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")).Split(Path.PathSeparator)) {
                     _references.Add(MetadataReference.CreateFromFile(r));
             }
-            // CompileAndRun("scripts/Generate10Lines.cs");
         }
 
         public int CompileAndRun(String path, int seed=-1) {
@@ -29,8 +28,6 @@ namespace Designer {
             SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(SourceText.From(source), path: path);
             source.Dispose();
 
-
-            // Console.WriteLine(syntaxTree.GetCompilationUnitRoot().
             CSharpCompilation compilation = CSharpCompilation.Create(Path.GetRandomFileName(), syntaxTrees: new[] { syntaxTree }, references: _references, options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary).WithAllowUnsafe(true));
 
             //get the scripts classname
