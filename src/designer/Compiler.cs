@@ -22,8 +22,8 @@ namespace Designer {
         }
 
         public int CompileAndRun(String path, int seed=-1) {
-            Data.DebugConsole.Add("Compiling:");
-            Data.DebugConsole.Add(path);
+            // Data.DebugConsole.Add("Compiling:");
+            // Data.DebugConsole.Add(path);
             FileStream source = File.OpenRead(path);
             SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(SourceText.From(source), path: path);
             source.Dispose();

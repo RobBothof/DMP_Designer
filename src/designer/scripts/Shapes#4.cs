@@ -10,7 +10,7 @@ public class Shapes_4 : IGenerator {
 
     public void Generate(int seed) {
         _rand = new Random(seed);
-        int count=1;
+        int count=15;
 
         Data.lines.Clear();
         Data.dots.Clear();
@@ -21,7 +21,7 @@ public class Shapes_4 : IGenerator {
             int dotIndex=0;
 
             List<Vector2> lineDots = new List<Vector2>();
-            Vector2 center = new Vector2((float)(lineIndex%3) * 51200f*20f + 0*51200f,(float)(lineIndex/3) * 20*51200f + 0f*51200f);
+            Vector2 center = new Vector2((float)(lineIndex%3) * 51200f*25f + 15*51200f,(float)(lineIndex/3) * 22.5f*51200f + 15f*51200f);
             // int dotStart = 0;
             Vector2 startpos = new Vector2(0,0);
             for(float r=_rand.NextSingle()*20f;r<360f;r=r+(5f + _rand.NextSingle()*60f)) {

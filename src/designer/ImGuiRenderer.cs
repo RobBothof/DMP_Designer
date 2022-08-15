@@ -161,13 +161,13 @@ namespace Veldrid
 
             ImGuiStylePtr style = ImGui.GetStyle();
             style.ScrollbarRounding=0;
-            style.ItemSpacing=new Vector2(8,4);
-            style.ItemInnerSpacing=new Vector2(8,6);
+            style.ItemSpacing=new Vector2(3,3);
+            style.ItemInnerSpacing=new Vector2(3,3);
             style.GrabMinSize=15;
             style.FrameBorderSize=1f;
             style.WindowBorderSize=1f;
             style.WindowPadding=new Vector2(8f,4f);
-            style.FramePadding=new Vector2(4f,2f);
+            style.FramePadding=new Vector2(3f,3f);
             style.ColorButtonPosition=ImGuiDir.Left;
             style.WindowTitleAlign=new Vector2(0.02f,0.5f);
             style.SelectableTextAlign=new Vector2(0f,0f);

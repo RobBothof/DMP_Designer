@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Text;
 
 namespace Designer {
 
@@ -6,14 +7,35 @@ namespace Designer {
         public List<DrawInstruction> DrawInstructions;
         private UInt64 index = 0;
         private UInt64 dotIndex = 0;
-        private int lastX = 0;
-        private int lastY = 0;
+        private Int64 lastX = 0;
+        private Int64 lastY = 0;
 
         public DriExporter() {
             DrawInstructions = new List<DrawInstruction>();
         }
 
-        public void Export(String filename) {
+        public void Export(String path) {
+            //start new file
+            // string path = "drawings/" + exportfilename + ".dri";
+            // string path = exportfilename + ".dri";
+            DrawInstruction dtemp = new DrawInstruction();
+            byte[] bytes = FormatDrawInstruction(dtemp);
+            Int32 version = 2;
+            Int64 start = 60;
+            byte size = (byte)bytes.Length;
+
+            using (FileStream fileStream = new FileStream(path, FileMode.Create)) {
+                // Write the data to the file, byte by byte.
+                fileStream.Seek(0, SeekOrigin.Begin);
+                fileStream.Write(Encoding.ASCII.GetBytes("DRI::DrawInstruction"));
+                fileStream.Write(BitConverter.GetBytes(version));
+                fileStream.Seek(32, SeekOrigin.Begin);
+                fileStream.Write(BitConverter.GetBytes(start));
+                fileStream.Write(BitConverter.GetBytes(size));
+            }
+            //
+
+            Int64 instructioncount = 0;
             index = 0;
             dotIndex = 0;
             lastX = 0;
@@ -23,26 +45,149 @@ namespace Designer {
 
                 if (l.type == lineType.Straight) {
                     for (int i = 0; i < l.lineData.Length - 1; i++) {
-                        addLine((Int32)l.lineData[i].X, (Int32)l.lineData[i].Y, (Int32)l.lineData[i + 1].X, (Int32)l.lineData[i + 1].Y);
+                        addLine((Int64)l.lineData[i].X, (Int64)l.lineData[i].Y, (Int64)l.lineData[i + 1].X, (Int64)l.lineData[i + 1].Y);
                     }
                 }
 
                 if (l.type == lineType.QuadraticBezier) {
-                    addBezier((Int32)l.lineData[0].X, (Int32)l.lineData[0].Y, (Int32)l.lineData[1].X, (Int32)l.lineData[1].Y, (Int32)l.lineData[2].X, (Int32)l.lineData[2].Y);
+                    addBezier((Int64)l.lineData[0].X, (Int64)l.lineData[0].Y, (Int64)l.lineData[1].X, (Int64)l.lineData[1].Y, (Int64)l.lineData[2].X, (Int64)l.lineData[2].Y);
                 }
 
                 //save all instructions in the list
 
                 foreach (DrawInstruction d in DrawInstructions) {
-                    Console.WriteLine($"now drawing: {d.index}");
-                    draw(d);
+                    // Console.WriteLine($"now debugging line: {d.index}");
+                    // draw(d);
+
+                    using (FileStream fileStream = new FileStream(path, FileMode.Open)) {
+                        fileStream.Seek(start + instructioncount * size, SeekOrigin.Begin);
+                        fileStream.Write(FormatDrawInstruction(d));
+                    }
+
+                    instructioncount++;
                 }
 
+            }
+            Console.Write("written:");
+            Console.Write(instructioncount);
+            Console.WriteLine(" drawinstructions");
+
+            Data.DebugConsole.Add("Written: " + instructioncount.ToString() + " drawinstructions");
+
+            using (FileStream fileStream = new FileStream(path, FileMode.Open)) {
+                fileStream.Seek(24, SeekOrigin.Begin);
+                fileStream.Write(BitConverter.GetBytes(instructioncount));
+                fileStream.Seek(start + instructioncount * size, SeekOrigin.Begin);
+                fileStream.WriteByte(0);                
             }
 
         }
 
-        public void addLine(Int32 x_start, Int32 y_start, Int32 x_end, Int32 y_end) {
+
+        byte[] FormatDrawInstruction(DrawInstruction d) {
+            List<byte> bytes = new List<byte>();
+            bytes.AddRange(BitConverter.GetBytes(d.index));
+            bytes.Add(0);
+            bytes.Add((byte)d.type);
+            bytes.Add(0);
+            bytes.Add((byte)d.dir_x);
+            bytes.Add(0);
+            bytes.Add((byte)d.dir_y);
+            bytes.Add(0);
+            bytes.AddRange(BitConverter.GetBytes(d.x_start));
+            bytes.Add(0);
+            bytes.AddRange(BitConverter.GetBytes(d.y_start));
+            bytes.Add(0);
+            bytes.AddRange(BitConverter.GetBytes(d.x_end));
+            bytes.Add(0);
+            bytes.AddRange(BitConverter.GetBytes(d.y_end));
+            bytes.Add(0);
+            bytes.AddRange(BitConverter.GetBytes(d.delta_x));
+            bytes.Add(0);
+            bytes.AddRange(BitConverter.GetBytes(d.delta_y));
+            bytes.Add(0);
+            bytes.AddRange(BitConverter.GetBytes(d.delta_xx));
+            bytes.Add(0);
+            bytes.AddRange(BitConverter.GetBytes(d.delta_yy));
+            bytes.Add(0);
+            bytes.AddRange(BitConverter.GetBytes(d.delta_xy));
+            bytes.Add(0);
+            bytes.AddRange(BitConverter.GetBytes(d.err));
+            bytes.Add(0);
+            bytes.AddRange(BitConverter.GetBytes(d.steps));
+
+            Int32 checksum = 0;
+            for (int i = 0; i < bytes.Count; i++) {
+                checksum += bytes[i];
+            }
+
+            //prepend the count byte
+            bytes.Insert(0, (byte)bytes.Count);
+
+            //prepend the 10byte startheader
+            bytes.InsertRange(0, new byte[] { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF });
+
+            //add checksum
+            bytes.AddRange(BitConverter.GetBytes(checksum));
+            return bytes.ToArray();
+        }
+        /*
+        void Save() {
+            DrawInstruction d = new DrawInstruction();
+
+            //pre-calculate the length of a serialmessage
+            byte[] bytes = FormatDrawInstruction(d);
+            Console.WriteLine(bytes.Length);
+
+            Int32 version = 2;
+            Int64 count = 1020;
+            Int64 start = 60;
+            byte size = (byte)bytes.Length;
+            using (FileStream fileStream = new FileStream("drawings/test" + count.ToString() + ".dri", FileMode.Create)) {
+                // Write the data to the file, byte by byte.
+
+                fileStream.Seek(0, SeekOrigin.Begin);
+                fileStream.Write(Encoding.ASCII.GetBytes("DRI::DrawInstruction"));
+                fileStream.Write(BitConverter.GetBytes(version));
+                fileStream.Write(BitConverter.GetBytes(count));
+                fileStream.Write(BitConverter.GetBytes(start));
+                fileStream.Write(BitConverter.GetBytes(size));
+
+                Random rnd = new Random();
+                for (Int64 i = 0; i < count; i++) {
+                    d.index = i;
+                    d.type = 1;
+                    d.dirX = (sbyte)Math.Sign(rnd.Next(-100, 100));
+                    d.dirY = (sbyte)Math.Sign(rnd.Next(-100, 100));
+                    d.steps = 0;
+                    d.startX = -3;
+                    d.startY = -30;
+                    d.endX = -300;
+                    d.endY = -3000;
+                    // d.deltaX = rnd.NextInt64(-10000000000, 1000000000000);
+                    // d.deltaY = rnd.NextInt64(-10000000000, 1000000000000);
+                    // d.deltaXX = rnd.NextInt64(-10000000000, 1000000000000);
+                    // d.deltaYY = rnd.NextInt64(-10000000000, 1000000000000);
+                    // d.deltaXY = rnd.NextInt64(-10000000000, 1000000000000);
+                    // d.error = rnd.NextInt64(-10000000000, 1000000000000);
+                    d.deltaX = -3;
+                    d.deltaY = -30;
+                    d.deltaXX = -300;
+                    d.deltaYY = -3000;
+                    d.deltaXY = -30000;
+                    d.error = -300000;
+
+                    bytes = FormatDrawInstruction(d);
+                    fileStream.Seek(size * i + start, SeekOrigin.Begin);
+                    fileStream.Write(bytes);
+                }
+                fileStream.Seek(size * count + start, SeekOrigin.Begin);
+                fileStream.WriteByte(0);
+            }
+        }
+*/
+
+        public void addLine(Int64 x_start, Int64 y_start, Int64 x_end, Int64 y_end) {
             //add drawinstruction
             DrawInstruction d = new DrawInstruction();
             d.type = lineType.Straight;
@@ -57,7 +202,7 @@ namespace Designer {
             index++;
         }
 
-        void addBezier(Int32 x0, Int32 y0, Int32 x1, Int32 y1, Int32 x2, Int32 y2) {
+        void addBezier(Int64 x0, Int64 y0, Int64 x1, Int64 y1, Int64 x2, Int64 y2) {
             if ((x0 - x1) * (x2 - x1) > 0) {
                 SplitBezierHorizontal(x0, y0, x1, y1, x2, y2);
             } else if ((y0 - y1) * (y2 - y1) > 0) {
@@ -67,14 +212,14 @@ namespace Designer {
             }
         }
 
-        void SplitBezierHorizontal(Int32 x0, Int32 y0, Int32 x1, Int32 y1, Int32 x2, Int32 y2) {
+        void SplitBezierHorizontal(Int64 x0, Int64 y0, Int64 x1, Int64 y1, Int64 x2, Int64 y2) {
             Double t = (x0 - 2 * x1 + x2);
             t = (x0 - x1) / t;
-            Int32 ysplit = (Int32)Math.Floor((1 - t) * ((1 - t) * y0 + 2.0 * t * y1) + t * t * y2 + 0.5);
+            Int64 ysplit = (Int64)Math.Floor((1 - t) * ((1 - t) * y0 + 2.0 * t * y1) + t * t * y2 + 0.5);
             t = ((x0 * x2 - x1 * x1) * t) / (x0 - x1);
-            Int32 xsplit = (Int32)Math.Floor(t + 0.5);
-            Int32 ysplitc1 = (Int32)Math.Floor(((y1 - y0) * (t - x0)) / (x1 - x0) + y0 + 0.5);
-            Int32 ysplitc2 = (Int32)Math.Floor(((y1 - y2) * (t - x2)) / (x1 - x2) + y2 + 0.5);
+            Int64 xsplit = (Int64)Math.Floor(t + 0.5);
+            Int64 ysplitc1 = (Int64)Math.Floor(((y1 - y0) * (t - x0)) / (x1 - x0) + y0 + 0.5);
+            Int64 ysplitc2 = (Int64)Math.Floor(((y1 - y2) * (t - x2)) / (x1 - x2) + y2 + 0.5);
 
             if ((y0 - ysplitc1) * (ysplit - ysplitc1) > 0) {
                 SplitBezierVertical(x0, y0, xsplit, ysplitc1, xsplit, ysplit);
@@ -89,27 +234,27 @@ namespace Designer {
             }
         }
 
-        void SplitBezierVertical(Int32 x0, Int32 y0, Int32 x1, Int32 y1, Int32 x2, Int32 y2) {
+        void SplitBezierVertical(Int64 x0, Int64 y0, Int64 x1, Int64 y1, Int64 x2, Int64 y2) {
             Double t = y0 - 2 * y1 + y2;
             t = (y0 - y1) / t;
-            Int32 xsplit = (Int32)Math.Floor((1 - t) * ((1 - t) * x0 + 2 * t * x1) + t * t * x2 + 0.5);
+            Int64 xsplit = (Int64)Math.Floor((1 - t) * ((1 - t) * x0 + 2 * t * x1) + t * t * x2 + 0.5);
             t = ((y0 * y2 - y1 * y1) * t) / (y0 - y1);
-            Int32 ysplit = (Int32)Math.Floor(t + 0.5);
-            Int32 xsplitc1 = (Int32)Math.Floor(((x1 - x0) * (t - y0)) / (y1 - y0) + x0 + 0.5);
-            Int32 xsplitc2 = (Int32)Math.Floor(((x1 - x2) * (t - y2)) / (y1 - y2) + x2 + 0.5);
+            Int64 ysplit = (Int64)Math.Floor(t + 0.5);
+            Int64 xsplitc1 = (Int64)Math.Floor(((x1 - x0) * (t - y0)) / (y1 - y0) + x0 + 0.5);
+            Int64 xsplitc2 = (Int64)Math.Floor(((x1 - x2) * (t - y2)) / (y1 - y2) + x2 + 0.5);
 
             addBezierSegment(x0, y0, xsplitc1, ysplit, xsplit, ysplit);
             addBezierSegment(xsplit, ysplit, xsplitc2, ysplit, x2, y2);
         }
 
-        void addBezierSegment(Int32 x_start, Int32 y_start, Int32 x_control, Int32 y_control, Int32 x_end, Int32 y_end) {
+        void addBezierSegment(Int64 x_start, Int64 y_start, Int64 x_control, Int64 y_control, Int64 x_end, Int64 y_end) {
             //check to make sure there is no gradient change
             if (!((x_start - x_control) * (x_end - x_control) <= 0 && (y_start - y_control) * (y_end - y_control) <= 0)) {
                 Console.WriteLine("Curve Changed SIGN!");
                 return;
             }
-            Int32 dir_x = x_start < x_end ? 1 : -1;
-            Int32 dir_y = y_start < y_end ? 1 : -1;
+            Int64 dir_x = x_start < x_end ? 1 : -1;
+            Int64 dir_y = y_start < y_end ? 1 : -1;
 
             Int64 temp_y = (x_start - 2 * x_control + x_end);
             Int64 temp_x = (y_start - 2 * y_control + y_end);
@@ -119,8 +264,8 @@ namespace Designer {
             if (curve == 0) {
                 Console.WriteLine("Straight Line, no curve");
                 //submit 
-                addLine((int)x_start, (int)y_start, (int)x_control, (int)y_control);
-                addLine((int)x_control, (int)y_control, (int) x_end, (int)y_end);
+                addLine(x_start, y_start, x_control, y_control);
+                addLine(x_control, y_control, x_end, y_end);
                 return;
             }
 
@@ -153,8 +298,8 @@ namespace Designer {
                 x_control = (x_start + 4 * x_control + x_end) / 6;
                 y_control = (y_start + 4 * y_control + y_end) / 6;
                 /* approximation */
-                addLine((int)x_start, (int)y_start, (int)x_control, (int)y_control);
-                addLine((int)x_control, (int)y_control, (int)x_end, (int)y_end);
+                addLine(x_start, y_start, x_control, y_control);
+                addLine(x_control, y_control, x_end, y_end);
                 return;
             }
 
@@ -164,7 +309,7 @@ namespace Designer {
 
             DrawInstruction d = new DrawInstruction();
             d.type = lineType.QuadraticBezier;
-            d.x_start = (int) x_start; d.y_start = (int) y_start; d.x_end = (int) x_end; d.y_end = (int) y_end;
+            d.x_start = x_start; d.y_start = y_start; d.x_end = x_end; d.y_end = y_end;
             d.delta_x = delta_x;
             d.delta_y = delta_y;
             d.delta_xx = delta_xx;
@@ -179,8 +324,8 @@ namespace Designer {
         }
 
         void draw(DrawInstruction d) {
-            Int32 x = d.x_start;
-            Int32 y = d.y_start;
+            Int64 x = d.x_start;
+            Int64 y = d.y_start;
             Int64 err = d.err;
 
             if (d.type == lineType.Straight) {
@@ -243,7 +388,7 @@ namespace Designer {
 
         }
 
-        void SetPixel(Int32 x, Int32 y) {
+        void SetPixel(Int64 x, Int64 y) {
             if (Math.Abs(x - lastX) > 1 || Math.Abs(y - lastY) > 1) {
                 Console.WriteLine(String.Format("({0}, {1})", lastX, lastY));
                 Console.WriteLine(String.Format("({0}, {1})", x, y));
@@ -261,7 +406,7 @@ namespace Designer {
 
             // Data.dots.Add(d);
             dotIndex++;
-            Console.WriteLine(dotIndex);
+
 
         }
 
