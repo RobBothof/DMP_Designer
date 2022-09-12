@@ -5,12 +5,12 @@ using System.Collections.Generic;
 using System.Numerics;
 using Designer;
 
-public class Shapes_4 : IGenerator {
+public class Shapes_4_1 : IGenerator {
     public static Random _rand;
 
     public void Generate(int seed) {
         _rand = new Random(seed);
-        int count=9;
+        int count=1;
 
         Data.lines.Clear();
         Data.dots.Clear();
@@ -35,10 +35,12 @@ public class Shapes_4 : IGenerator {
                 // lineDots.Add(Data.dots[dotIndex].position);
 
                 if (dotIndex==0) {
-                    startpos=Vector2.Transform(new Vector2(0,_rand.NextSingle()*400000f+100000f),rot) + center;
+                    // startpos=Vector2.Transform(new Vector2(0,_rand.NextSingle()*400000f+100000f),rot) + center;
+                    startpos=Vector2.Transform(new Vector2(0,_rand.NextSingle()*40000f+10000f),rot) + center;
                     lineDots.Add(startpos);
                 } else {
-                    lineDots.Add(Vector2.Transform(new Vector2(0,_rand.NextSingle()*400000f+100000f),rot) + center);
+                    // lineDots.Add(Vector2.Transform(new Vector2(0,_rand.NextSingle()*400000f+100000f),rot) + center);
+                    lineDots.Add(Vector2.Transform(new Vector2(0,_rand.NextSingle()*40000f+10000f),rot) + center);
                 }
                 dotIndex++;
             }

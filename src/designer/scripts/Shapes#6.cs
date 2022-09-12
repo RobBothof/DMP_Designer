@@ -5,13 +5,13 @@ using System.Collections.Generic;
 using System.Numerics;
 using Designer;
 
-public class Shapes_4 : IGenerator {
+public class Shapes_6 : IGenerator {
     public static Random _rand;
 
     public void Generate(int seed) {
         _rand = new Random(seed);
-        int count=9;
-
+        int count=15;
+        float R2 = 1.25f; // radius of the wheel on motor
         Data.lines.Clear();
         Data.dots.Clear();
 
@@ -21,7 +21,7 @@ public class Shapes_4 : IGenerator {
             int dotIndex=0;
 
             List<Vector2> lineDots = new List<Vector2>();
-            Vector2 center = new Vector2((float)(lineIndex%3) * 51200f*25f + 15*51200f,(float)(lineIndex/3) * 22.5f*51200f + 15f*51200f);
+            Vector2 center = new Vector2((float)(lineIndex%3) * (51200f / (R2*MathF.PI)) *25f + 15*(51200f / (R2*MathF.PI)),(float)(lineIndex/3) * 22.5f*(51200f / (R2*MathF.PI)) + 15f*(51200f / (R2*MathF.PI)));
             // int dotStart = 0;
             Vector2 startpos = new Vector2(0,0);
             for(float r=_rand.NextSingle()*20f;r<360f;r=r+(5f + _rand.NextSingle()*60f)) {
@@ -35,10 +35,10 @@ public class Shapes_4 : IGenerator {
                 // lineDots.Add(Data.dots[dotIndex].position);
 
                 if (dotIndex==0) {
-                    startpos=Vector2.Transform(new Vector2(0,_rand.NextSingle()*400000f+100000f),rot) + center;
+                    startpos=Vector2.Transform(new Vector2(0,_rand.NextSingle()*100000f+30000f),rot) + center;
                     lineDots.Add(startpos);
                 } else {
-                    lineDots.Add(Vector2.Transform(new Vector2(0,_rand.NextSingle()*400000f+100000f),rot) + center);
+                    lineDots.Add(Vector2.Transform(new Vector2(0,_rand.NextSingle()*100000f+30000f),rot) + center);
                 }
                 dotIndex++;
             }

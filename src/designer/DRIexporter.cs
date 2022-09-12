@@ -356,8 +356,11 @@ namespace Designer {
                 Int64 delta_x = d.delta_x;
                 Int64 delta_y = d.delta_y;
                 while (x != d.x_end && y != d.y_end) {
-                    bool step_x = 2 * err - d.delta_x >= 0;
-                    bool step_y = 2 * err - d.delta_y <= 0;
+                    bool step_x = 2 * err - delta_x >= 0;
+                    bool step_y = 2 * err - delta_y <= 0;
+
+                    // bool step_x = 2 * err - d.delta_x >= 0;
+                    // bool step_y = 2 * err - d.delta_y <= 0;
                     SetPixel(x, y);
 
                     if (step_x) {

@@ -24,24 +24,6 @@ namespace Designer {
         CatmullRom = 4
     }
 
-    public struct DrawInstruction2 {
-        public UInt64 index;
-        public lineType type;
-        public sbyte dir_x;
-        public sbyte dir_y;
-        public Int32 x_start;
-        public Int32 y_start;
-        public Int32 x_end;
-        public Int32 y_end;
-        public Int64 delta_x;
-        public Int64 delta_y;
-        public Int64 delta_xx;
-        public Int64 delta_yy;
-        public Int64 delta_xy;
-        public Int64 err;
-        public Int64 steps;
-    }
-
     public struct DrawInstruction {
         public UInt64 index;
         public lineType type;
@@ -99,6 +81,8 @@ namespace Designer {
     }
 
     class Program {
+        private static float R2 = 1.25f; // radius of the wheel on motor
+
         private static Sdl2Window _window;
         private static GraphicsDevice _graphicsDevice;
         private static CommandList _commandList;
@@ -407,10 +391,10 @@ namespace Designer {
 
                     //create view and projection matrix
                     // _commandList.UpdateBuffer(_projectionBuffer, 0, Matrix4x4.CreateOrthographic(_window.Width * 100f / _zoomlevels[_zoom], _window.Height * 100f / _zoomlevels[_zoom], 0.1f, 10000f));
-                    _commandList.UpdateBuffer(_projectionBuffer, 0, Matrix4x4.CreateOrthographic(_window.Width * 51200f / _zoomlevels[_zoom], _window.Height * 51200f / _zoomlevels[_zoom], 0.1f, 50000f));
+                    _commandList.UpdateBuffer(_projectionBuffer, 0, Matrix4x4.CreateOrthographic(_window.Width * (51200f / (R2 * MathF.PI)) / _zoomlevels[_zoom], _window.Height * (51200f / (R2 * MathF.PI)) / _zoomlevels[_zoom], 0.1f, 50000f));
                     _commandList.UpdateBuffer(_cameraBuffer, 0, Matrix4x4.CreateLookAt(new Vector3(_cameraPosition.X, _cameraPosition.Y, 1000), new Vector3(_cameraPosition.X, _cameraPosition.Y, 0f), Vector3.UnitY));
                     _commandList.UpdateBuffer(_rotationBuffer, 0, Matrix4x4.CreateFromAxisAngle(Vector3.UnitZ, _cameraRotation * 0.01745329252f));
-                    _commandList.UpdateBuffer(_translationBuffer, 0, new Vector4(_drawSize[0] * 2560, _drawSize[1] * 2560, 0, 1));
+                    _commandList.UpdateBuffer(_translationBuffer, 0, new Vector4(_drawSize[0] * (2560f / (R2 * MathF.PI)), _drawSize[1] * (2560f / (R2 * MathF.PI)), 0, 1));
 
                     UpdateGridLineGeometry();
                     DrawGridLines();
@@ -705,8 +689,8 @@ namespace Designer {
                 int layer = 0;
                 int lastlayer = 0;
                 if (_gridSize[0] > 0 && _gridSize[1] > 0) {
-                    int w = (_drawSize[0] / _gridSize[0]) * 5120;
-                    int h = (_drawSize[1] / _gridSize[1]) * 5120;
+                    int w = (_drawSize[0] / _gridSize[0]) * (int) (5120f / (R2 * MathF.PI));
+                    int h = (_drawSize[1] / _gridSize[1]) * (int) (5120f / (R2 * MathF.PI));
                     for (int xtile = 0; xtile < _gridSize[0]; xtile++) {
                         if (lastlayer == layer) layer = (layer + 1) % 2;
                         lastlayer = layer;
@@ -915,7 +899,7 @@ namespace Designer {
                 if (ImGui.IsMouseDragging(ImGuiMouseButton.Left)) {
                     ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeAll);
                     // Console.WriteLine(ImGui.GetMouseDragDelta());
-                    _cameraPosition = _cameraPosition - new Vector2(ImGui.GetMouseDragDelta().X * (51200f / _zoomlevels[_zoom]), -ImGui.GetMouseDragDelta().Y * (51200f / _zoomlevels[_zoom]));
+                    _cameraPosition = _cameraPosition - new Vector2(ImGui.GetMouseDragDelta().X * ((25600f / MathF.PI) / _zoomlevels[_zoom]), -ImGui.GetMouseDragDelta().Y * ((25600f / MathF.PI) / _zoomlevels[_zoom]));
                     _iniData["Camera"]["PosX"] = _cameraPosition.X.ToString();
                     _iniData["Camera"]["PosY"] = _cameraPosition.Y.ToString();
                     _iniParser.WriteFile("Configuration.ini", _iniData);
@@ -1159,7 +1143,7 @@ namespace Designer {
                     ImGui.SameLine();
                     ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 2f);
                     if (ImGui.Button("center", new Vector2(104, 20))) {
-                        _cameraPosition = new Vector2(_drawSize[0] * 2560, _drawSize[1] * 2560);
+                        _cameraPosition = new Vector2(_drawSize[0] * (2560f / (R2 * MathF.PI)), _drawSize[1] * (2560f / (R2 * MathF.PI)));
                         _iniData["Camera"]["PosX"] = _cameraPosition.X.ToString();
                         _iniData["Camera"]["PosY"] = _cameraPosition.Y.ToString();
                         _iniParser.WriteFile("Configuration.ini", _iniData);
