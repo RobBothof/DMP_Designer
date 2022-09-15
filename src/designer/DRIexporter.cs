@@ -351,6 +351,9 @@ namespace Designer {
                     SetPixel(x, y);
                 }
             }
+            if (d.type == lineType.Quadratic3DBezier) {
+            
+            }
 
             if (d.type == lineType.QuadraticBezier) {
                 Int64 delta_x = d.delta_x;
