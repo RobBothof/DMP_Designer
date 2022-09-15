@@ -31,7 +31,7 @@ namespace Designer {
                 fileStream.Write(BitConverter.GetBytes(version));
                 fileStream.Seek(32, SeekOrigin.Begin);
                 fileStream.Write(BitConverter.GetBytes(start));
-                fileStream.Write(BitConverter.GetBytes(size));
+                fileStream.Write(BitConverter.GetBytes(size)); //lenghth of one instruction
             }
             //
 
@@ -80,7 +80,6 @@ namespace Designer {
                 fileStream.Seek(start + instructioncount * size, SeekOrigin.Begin);
                 fileStream.WriteByte(0);                
             }
-
         }
 
 
@@ -327,6 +326,7 @@ namespace Designer {
             Int64 x = d.x_start;
             Int64 y = d.y_start;
             Int64 err = d.err;
+            d.steps = 0;
 
             if (d.type == lineType.Straight) {
                 SetPixel(x, y);
@@ -403,14 +403,12 @@ namespace Designer {
 
             Dot d = new Dot();
             d.layer = 0;
-            d.size = 1.0f;
+            d.size = 10000.0f;
             d.color = Veldrid.RgbaFloat.Black;
             d.position = new Vector2(x, y);
 
-            // Data.dots.Add(d);
+            Data.dots.Add(d);
             dotIndex++;
-
-
         }
 
     }

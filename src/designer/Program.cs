@@ -43,6 +43,7 @@ namespace Designer {
     }
     public class Line {
         public Vector2[] lineData;
+        public Vector3[] widthData;
         public lineType type;
         public int layer;
     }
@@ -80,8 +81,8 @@ namespace Designer {
         void Generate(int seed);
     }
 
-    class Program {
-        private static float R2 = 1.25f; // radius of the wheel on motor
+    public static class Program {
+        private static float R2 = 1.25f; // diameter (r*2) of the wheel on motor
 
         private static Sdl2Window _window;
         private static GraphicsDevice _graphicsDevice;
@@ -162,6 +163,10 @@ namespace Designer {
 
         private static string _exportfilepath = "/home/robber/DrawMachineProject/drawings/";
         private static string _exportfilename = "";
+
+        public static void AddNewQuadraticBezier(int i) {
+            Console.WriteLine(i.ToString());
+        }
 
         static void Main(string[] args) {
             _compiler = new CodeCompiler();
@@ -563,13 +568,70 @@ namespace Designer {
 
                     if (Data.lines[l].type == lineType.QuadraticBezier) {
                         //generate points
-                        Vector2[] points = new Vector2[300];
+                        Vector3[] points = new Vector3[101];
+                        Vector3 A = Data.lines[l].widthData[0];
+                        Vector3 B = Data.lines[l].widthData[1];
+                        Vector3 C = Data.lines[l].widthData[2];
+
+                        for (int p = 0; p <= 100; p++) {
+                            float t = ((float)p) / 100f;
+                            points[p] = (1f - t) * (1f - t) * A + 2 * (1f - t) * t * B + t * t * C;
+                        }
+                        for (int pctr = 0; pctr < points.Length; pctr++) {
+                            LineVertex v1 = new LineVertex();
+                            v1.Width = points[pctr].Z;
+                            v1.Edge = 0;
+                            v1.Color = new RgbaFloat(_drawColor.X, _drawColor.Y, _drawColor.Z, 1.0f);
+
+                            LineVertex v2 = new LineVertex();
+                            v2.Width = points[pctr].Z;
+                            v2.Edge = 1;
+                            v2.Color = new RgbaFloat(_drawColor.X, _drawColor.Y, _drawColor.Z, 1.0f);
+
+                            Vector3 vnorm;
+                            //line start
+                            if (pctr == 0) {
+                                vnorm = Vector3.Normalize(Vector3.Subtract(points[pctr + 1], points[pctr]));
+                                Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X) * points[pctr].Z*_linewidth;
+                                v1.Position = new Vector2(points[pctr].X - vperp.X,points[pctr].Y - vperp.Y);
+                                v2.Position = new Vector2(points[pctr].X + vperp.X,points[pctr].Y + vperp.Y);
+                                // v2.Position = Vector2((points[pctr] + vperp * v2.Width).X,;
+                            }
+
+                            if (pctr > 0 && pctr + 1 < points.Length) {
+                                Vector3 vnorm1 = Vector3.Normalize(Vector3.Subtract(points[pctr], points[pctr - 1])); //incoming line
+                                Vector3 vnorm2 = Vector3.Normalize(Vector3.Subtract(points[pctr + 1], points[pctr])); //outgoing line
+                                vnorm = Vector3.Normalize(new Vector3((vnorm1.X + vnorm2.X), (vnorm1.Y + vnorm2.Y), (vnorm1.Z + vnorm2.Z)));
+                                // float len = (_linewidth) / Vector3.Dot(vnorm1, vnorm);
+                                Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X) * ((points[pctr].Z*_linewidth)/ Vector3.Dot(vnorm1, vnorm));
+                                v1.Position = new Vector2(points[pctr].X - vperp.X,points[pctr].Y - vperp.Y);
+                                v2.Position = new Vector2(points[pctr].X + vperp.X,points[pctr].Y + vperp.Y);
+                            }
+
+                            //line end
+                            if (pctr + 1 == points.Length) {
+                                vnorm = Vector3.Normalize(Vector3.Subtract(points[pctr], points[pctr - 1]));
+                                Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X) * points[pctr].Z*_linewidth;
+                                v1.Position = new Vector2(points[pctr].X - vperp.X,points[pctr].Y - vperp.Y);
+                                v2.Position = new Vector2(points[pctr].X + vperp.X,points[pctr].Y + vperp.Y);                                
+                            }
+
+                            lineVertices.Insert(vCount + pctr * 2, v1);
+                            lineVertices.Insert(vCount + pctr * 2 + 1, v2);
+                        }
+                        vCount += points.Length * 2;
+
+                    }
+
+                    if (Data.lines[l].type == lineType.CatmullRom) {
+                        //generate points
+                        Vector2[] points = new Vector2[101];
                         Vector2 A = Data.lines[l].lineData[0];
                         Vector2 B = Data.lines[l].lineData[1];
                         Vector2 C = Data.lines[l].lineData[2];
 
-                        for (int p = 0; p < 300; p++) {
-                            float t = ((float)p) / 300f;
+                        for (int p = 0; p <= 100; p++) {
+                            float t = ((float)p) / 100f;
                             points[p] = (1f - t) * (1f - t) * A + 2 * (1f - t) * t * B + t * t * C;
                         }
                         for (int pctr = 0; pctr < points.Length; pctr++) {
@@ -588,15 +650,15 @@ namespace Designer {
                             if (pctr == 0) {
                                 vnorm = Vector2.Normalize(Vector2.Subtract(points[pctr + 1], points[pctr]));
                                 Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
-                                v1.Position = points[pctr] - vperp * _linewidth;
-                                v2.Position = points[pctr] + vperp * _linewidth;
+                                v1.Position = points[pctr] - vperp * v1.Width;
+                                v2.Position = points[pctr] + vperp * v2.Width;
                             }
 
                             if (pctr > 0 && pctr + 1 < points.Length) {
                                 Vector2 vnorm1 = Vector2.Normalize(Vector2.Subtract(points[pctr], points[pctr - 1])); //incoming line
                                 Vector2 vnorm2 = Vector2.Normalize(Vector2.Subtract(points[pctr + 1], points[pctr])); //outgoing line
                                 vnorm = Vector2.Normalize(new Vector2((vnorm1.X + vnorm2.X), (vnorm1.Y + vnorm2.Y)));
-                                float len = _linewidth / Vector2.Dot(vnorm1, vnorm);
+                                float len = (_linewidth) / Vector2.Dot(vnorm1, vnorm);
                                 Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
                                 v1.Position = points[pctr] - vperp * (len);
                                 v2.Position = points[pctr] + vperp * (len);
@@ -606,8 +668,8 @@ namespace Designer {
                             if (pctr + 1 == points.Length) {
                                 vnorm = Vector2.Normalize(Vector2.Subtract(points[pctr], points[pctr - 1]));
                                 Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
-                                v1.Position = points[pctr] - vperp * _linewidth;
-                                v2.Position = points[pctr] + vperp * _linewidth;
+                                v1.Position = points[pctr] - vperp * v1.Width;
+                                v2.Position = points[pctr] + vperp * v2.Width;
                             }
 
                             lineVertices.Insert(vCount + pctr * 2, v1);
@@ -712,57 +774,7 @@ namespace Designer {
 
                 for (int l = 0; l < Data.gridLines.Count; l++) {
                     if (Data.gridLines[l].type == lineType.Straight) {
-                        /*
-                        for (int ctr = 0; ctr < Data.gridLines[l].lineData.Length; ctr++) {
-                            LineVertex v1 = new LineVertex();
-                            v1.Width = _gridlinewidth;
-                            v1.Edge = 0;
-                            v1.Color = new RgbaFloat(_gridColor.X, _gridColor.Y, _gridColor.Z, 1.0f);
-
-                            LineVertex v2 = new LineVertex();
-                            v2.Width = _gridlinewidth;
-                            v2.Edge = 1;
-                            v2.Color = new RgbaFloat(_gridColor.X, _gridColor.Y, _gridColor.Z, 1.0f);
-
-                            Vector2 vnorm;
-                            //line start
-                            if (ctr == 0) {
-                                vnorm = Vector2.Normalize(Vector2.Subtract(Data.gridLines[l].lineData[ctr + 1], Data.gridLines[l].lineData[ctr]));
-                                Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
-                                v1.Position = Data.gridLines[l].lineData[ctr] - vperp * _gridlinewidth;
-                                v2.Position = Data.gridLines[l].lineData[ctr] + vperp * _gridlinewidth;
-                            }
-
-                            if (ctr > 0 && ctr + 1 < Data.gridLines[l].lineData.Length) {
-                                Vector2 vnorm1 = Vector2.Normalize(Vector2.Subtract(Data.gridLines[l].lineData[ctr], Data.gridLines[l].lineData[ctr - 1])); //incoming line
-                                Vector2 vnorm2 = Vector2.Normalize(Vector2.Subtract(Data.gridLines[l].lineData[ctr + 1], Data.gridLines[l].lineData[ctr])); //outgoing line
-                                vnorm = Vector2.Normalize(new Vector2((vnorm1.X + vnorm2.X), (vnorm1.Y + vnorm2.Y)));
-                                float len = _gridlinewidth / Vector2.Dot(vnorm1, vnorm);
-                                Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
-                                v1.Position = Data.gridLines[l].lineData[ctr] - vperp * (len);
-                                v2.Position = Data.gridLines[l].lineData[ctr] + vperp * (len);
-                            }
-
-                            //line end
-                            if (ctr + 1 == Data.gridLines[l].lineData.Length) {
-                                vnorm = Vector2.Normalize(Vector2.Subtract(Data.gridLines[l].lineData[ctr], Data.gridLines[l].lineData[ctr - 1]));
-                                Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
-                                v1.Position = Data.gridLines[l].lineData[ctr] - vperp * _gridlinewidth;
-                                v2.Position = Data.gridLines[l].lineData[ctr] + vperp * _gridlinewidth;
-                            }
-
-                            gridLineVertices.Insert(vCount + ctr * 2, v1);
-                            gridLineVertices.Insert(vCount + ctr * 2 + 1, v2);
-
-                        }
-                        */
                         RgbaFloat c = new RgbaFloat(0, 0, 0, 0);
-
-                        // if (Data.gridLines[l].layer==0) c = new RgbaFloat(_clearColor.X+(_gridColor.X-0.5f), _clearColor.Y+(_gridColor.Y-0.5f), _clearColor.Z+(_gridColor.Z-0.5f), 1.0f);
-                        // if (Data.gridLines[l].layer==1) c = new RgbaFloat(_clearColor.X-(_gridColor.X-0.5f), _clearColor.Y-(_gridColor.Y-0.5f), _clearColor.Z-(_gridColor.Z-0.5f), 1.0f);
-
-                        // if (Data.gridLines[l].layer==0) c = new RgbaFloat(_gridColor.X*0.8f, _gridColor.Y*0.8f, _gridColor.Z*0.8f, 0.5f);
-                        // if (Data.gridLines[l].layer==1) c = new RgbaFloat(_gridColor.X*1.2f, _gridColor.Y*1.2f, _gridColor.Z*1.2f, 0.5f);
 
                         if (Data.gridLines[l].layer == 0) {
                             float r = 0f, g = 0f, b = 0f;
@@ -851,15 +863,16 @@ namespace Designer {
             uint vStart = 0;
             uint vLength = 0;
             for (int l = 0; l < Data.lines.Count; l++) {
-                if (Data.lines[l].type == lineType.CubicBezier) {
-                    vLength = (uint)Data.lines[l].lineData.Length * 2 * 100;
-                }
+                // if (Data.lines[l].type == lineType.CubicBezier) {
+                //     vLength = (uint)Data.lines[l].lineData.Length * 2 * 100;
+                // }
                 if (Data.lines[l].type == lineType.QuadraticBezier) {
-                    vLength = (uint)Data.lines[l].lineData.Length * 2 * 100;
+                    // vLength = (uint)Data.lines[l].lineData.Length + 1;
+                    vLength = 101*2;
                 }
-                if (Data.lines[l].type == lineType.Straight) {
-                    vLength = (uint)Data.lines[l].lineData.Length * 2;
-                }
+                // if (Data.lines[l].type == lineType.Straight) {
+                //     vLength = (uint)Data.lines[l].lineData.Length * 2;
+                // }
                 _commandList.Draw(vertexCount: vLength, instanceCount: 1, vertexStart: vStart, instanceStart: 0);
                 vStart += vLength;
             }
@@ -1340,105 +1353,7 @@ namespace Designer {
                 }
                 ImGui.PopStyleColor();
                 ImGui.PopFont();
-                /*
-                                //// Serial Monitor
-                                ImGui.PushStyleColor(ImGuiCol.Text,textcolor2);
-                                ImGui.PushFont(_imGuiRenderer.fontBold);
-                                ImGui.SetNextItemOpen(_openSerialMonitorHeader);
-                                if (ImGui.CollapsingHeader("Serial Monitor")) {   
-                                    ImGui.PushStyleColor(ImGuiCol.Text,textcolor1);
-                                    ImGui.PushFont(_imGuiRenderer.fontRegular);
-                                    if (!_openSerialMonitorHeader) {
-                                        _openSerialMonitorHeader=true;
-                                        _iniData["Header"]["SerialMonitor"]="true";
-                                        _iniParser.WriteFile("Configuration.ini", _iniData);                  
-                                    }
-
-                                    ImGui.Spacing();
-
-                                    if (serialPortNames.Count() > 0) {
-                                        ImGui.PushStyleColor(ImGuiCol.Header,new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
-                                        ImGui.PushStyleColor(ImGuiCol.HeaderHovered,new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
-                                        ImGui.PushStyleColor(ImGuiCol.HeaderActive,new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
-                                        ImGui.PushItemWidth(228f);
-                                        if (ImGui.BeginCombo("##comboserialports",serialPortNames[_selectedSerialPort])) {
-                                            for (int n = 0; n < serialPortNames.Count(); n++)
-                                            {
-                                                bool is_selected = (serialPortNames[_selectedSerialPort] == serialPortNames[n]); // You can store your selection however you want, outside or inside your objects
-                                                if (ImGui.Selectable(serialPortNames[n], is_selected)) 
-                                                    _selectedSerialPort = n;
-                                                if (is_selected) {
-                                                    ImGui.SetItemDefaultFocus();   // You may set the initial focus when opening the combo (scrolling + for keyboard navigation support)
-                                                }
-                                            }
-                                            ImGui.EndCombo();
-                                        }
-                                        ImGui.PopItemWidth();
-                                        ImGui.PopStyleColor();
-                                        ImGui.PopStyleColor();
-                                        ImGui.PopStyleColor();
-                                    } else {
-                                        ImGui.AlignTextToFramePadding();
-                                        ImGui.Text("No serialports found.");
-                                        ImGui.SameLine();                 
-                                        ImGui.Dummy(new Vector2(85f,0f));
-                                    }
-                                    ImGui.SameLine();                 
-                                    ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding,5f);
-                                    if (ImGui.Button("Refresh##SerialPorts",new Vector2(70f,20f))) {
-                                        serialPortNames = SerialPort.GetPortNames();
-                                    }
-                                    ImGui.PopStyleVar();
-
-                                    if (serialPortNames.Count() > 0) {
-                                        ImGui.PushStyleColor(ImGuiCol.Header,new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
-                                        ImGui.PushStyleColor(ImGuiCol.HeaderHovered,new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
-                                        ImGui.PushStyleColor(ImGuiCol.HeaderActive,new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
-                                        ImGui.PushItemWidth(228f);
-                                        if (ImGui.BeginCombo("##combobaudrate",baudrates[_selectedSerialBaudrate].ToString())) {
-                                            for (int n = 0; n < baudrates.Count(); n++)
-                                            {
-                                                bool is_selected = (baudrates[_selectedSerialBaudrate] == baudrates[n]); // You can store your selection however you want, outside or inside your objects
-                                                if (ImGui.Selectable(baudrates[n].ToString(), is_selected)) 
-                                                    _selectedSerialBaudrate = n;
-                                                if (is_selected) {
-                                                    ImGui.SetItemDefaultFocus();   // You may set the initial focus when opening the combo (scrolling + for keyboard navigation support)
-                                                } 
-                                            }
-                                            ImGui.EndCombo();
-                                        }
-                                        ImGui.PopItemWidth();
-                                        ImGui.PopStyleColor();
-
-                                        ImGui.SameLine();
-                                        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding,5f);                              
-                                        if (ImGui.Button("Connect",new Vector2(70f,20f))) {
-                                            Console.WriteLine($"Connecting to: {serialPortNames[_selectedSerialPort].ToString()} at {baudrates[_selectedSerialBaudrate].ToString()}");
-                                        }
-                                        ImGui.PopStyleVar();
-
-                                    } else {
-                                        ImGui.Dummy(new Vector2(0f,18f));
-                                    }
-                                    ImGui.Spacing();
-                                    ImGui.SetNextWindowSizeConstraints(new Vector2(100f,100f),new Vector2(1500f,200f));
-                                    ImGui.BeginChild("SerialMonitorChild",new Vector2(300f,240f),true,ImGuiWindowFlags.AlwaysVerticalScrollbar);
-                                    ImGui.EndChild();
-
-                                    ImGui.Dummy(new Vector2(0,12f));
-
-                                    ImGui.PopStyleColor();
-                                    ImGui.PopFont();
-                                } else {
-                                    if (_openSerialMonitorHeader) {
-                                        _openSerialMonitorHeader=false;
-                                        _iniData["Header"]["SerialMonitor"]="false";
-                                        _iniParser.WriteFile("Configuration.ini", _iniData);                  
-                                    }
-                                }
-                                ImGui.PopStyleColor();
-                                ImGui.PopFont();
-                */
+                
                 //// Statistics 
                 ImGui.PushStyleColor(ImGuiCol.Text, textcolor2);
                 ImGui.PushFont(_imGuiRenderer.fontBold);
