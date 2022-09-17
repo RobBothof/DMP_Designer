@@ -13,9 +13,9 @@ public class Thick : IGenerator {
         Data.dots.Clear();
 
         Data.lines.Insert(0,new Line());
-        Data.lines[0].type=lineType.QuadraticBezier;
+        Data.lines[0].type=lineType.Quadratic3DBezier;
         Data.lines[0].lineData = new Vector2[] {new Vector2(1000,1000), new Vector2(250000,1000), new Vector2(500000,1000)};
-        Data.lines[0].widthData = new Vector3[] {new Vector3(1000,1000,0), new Vector3(1050000,310000,5), new Vector3(500000,1000000,10)};
+        Data.lines[0].points = new Vector3[] {new Vector3(0,0,0), new Vector3(100,0,50), new Vector3(100,100,100)};
 
         for (int c=0;c<100;c++) {
             Program.AddNewQuadraticBezier(c);

@@ -44,7 +44,7 @@ namespace Designer {
     }
     public class Line {
         public Vector2[] lineData;
-        public Vector3[] widthData;
+        public Vector3[] points;
         public lineType type;
         public int layer;
     }
@@ -137,7 +137,7 @@ namespace Designer {
         private static Vector3 _drawColor = new Vector3(0.3f, 0.6f, 0.4f);
         private static Vector2 _cameraPosition = new Vector2(0.0f, 0.0f);
         private static int _zoom = 13;
-        private static float[] _zoomlevels = { 1f, 1.5f, 2f, 3.33f, 5f, 6.25f, 8.33f, 12.5f, 16.67f, 25f, 33.33f, 50f, 66.67f, 100f, 150f, 200f, 300f, 400f, 500f, 625f, 833, 1000f, 1500f, 2000f, 3000f, 4000f };
+        private static float[] _zoomlevels = { 1f, 1.5f, 2f, 3.33f, 5f, 6.25f, 8.33f, 12.5f, 16.67f, 25f, 33.33f, 50f, 66.67f, 100f, 150f, 200f, 300f, 400f, 500f, 8000f, 12000f, 16000f, 24000f, 32000f,64000f,128000f };
         private static float _linewidth = 3f;
         private static float _cameraRotation = 0.0f;
 
@@ -166,7 +166,7 @@ namespace Designer {
         private static string _exportfilename = "";
 
         public static void AddNewQuadraticBezier(int i) {
-            Console.WriteLine(i.ToString());
+            // Console.WriteLine(i.ToString());
         }
 
         static void Main(string[] args) {
@@ -567,12 +567,12 @@ namespace Designer {
                         vCount += Data.lines[l].lineData.Length * 2;
                     }
 
-                    if (Data.lines[l].type == lineType.QuadraticBezier) {
+                    if (Data.lines[l].type == lineType.Quadratic3DBezier) {
                         //generate points
                         Vector3[] points = new Vector3[101];
-                        Vector3 A = Data.lines[l].widthData[0];
-                        Vector3 B = Data.lines[l].widthData[1];
-                        Vector3 C = Data.lines[l].widthData[2];
+                        Vector3 A = Data.lines[l].points[0];
+                        Vector3 B = Data.lines[l].points[1];
+                        Vector3 C = Data.lines[l].points[2];
 
                         for (int p = 0; p <= 100; p++) {
                             float t = ((float)p) / 100f;
@@ -624,7 +624,7 @@ namespace Designer {
 
                     }
 
-                    if (Data.lines[l].type == lineType.CatmullRom) {
+                    if (Data.lines[l].type == lineType.QuadraticBezier) {
                         //generate points
                         Vector2[] points = new Vector2[101];
                         Vector2 A = Data.lines[l].lineData[0];

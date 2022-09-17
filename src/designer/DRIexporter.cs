@@ -41,6 +41,16 @@ namespace Designer {
             lastX = 0;
             lastY = 0;
             foreach (Line l in Data.lines) {
+
+                if (l.type == lineType.Quadratic3DBezier) {
+                    DrawBezier3DSegment(
+                        (Int64)l.points[0].X, (Int64)l.points[0].Y, (Int64)l.points[0].Z, 
+                        (Int64)l.points[1].X, (Int64)l.points[1].Y, (Int64)l.points[1].Z,
+                        (Int64)l.points[2].X, (Int64)l.points[2].Y, (Int64)l.points[2].Z
+                    );
+                }
+
+
                 DrawInstructions.Clear();
 
                 if (l.type == lineType.Straight) {
@@ -53,6 +63,13 @@ namespace Designer {
                     addBezier((Int64)l.lineData[0].X, (Int64)l.lineData[0].Y, (Int64)l.lineData[1].X, (Int64)l.lineData[1].Y, (Int64)l.lineData[2].X, (Int64)l.lineData[2].Y);
                 }
 
+                // if (l.type == lineType.Quadratic3DBezier) {
+                //     addBezier3DSegment(
+                //         (Int64)l.points[0].X, (Int64)l.points[0].Y, (Int64)l.points[0].Z, 
+                //         (Int64)l.points[1].X, (Int64)l.points[1].Y, (Int64)l.points[1].Z,
+                //         (Int64)l.points[2].X, (Int64)l.points[2].Y, (Int64)l.points[2].Z
+                //     );
+                // }
                 //save all instructions in the list
 
                 foreach (DrawInstruction d in DrawInstructions) {
@@ -322,6 +339,200 @@ namespace Designer {
             index++;
         }
 
+        void DrawBezier3DSegment(Int64 x_start, Int64 y_start, Int64 z_start, Int64 x_control, Int64 y_control, Int64 z_control, Int64 x_end, Int64 y_end, Int64 z_end) {
+            /*
+            if (!((x_start - x_control) * (x_end - x_control) <= 0 && (y_start - y_control) * (y_end - y_control) <= 0 && (z_start - z_control) * (z_end - z_control) <= 0)) {
+                Console.WriteLine("Curve Changed SIGN!");
+                return;
+            }
+            Int64 distXStart=x_start - x_control;
+            Int64 distYStart=y_start - y_control;
+            Int64 distZStart=z_start - z_control;
+
+            Int64 distXEnd=x_end - x_control;
+            Int64 distYEnd=y_end - y_control;
+            Int64 distZEnd=z_end - z_control;
+
+            Int64 curvatureXY = (x_start - x_control)*(y_end - y_control) - (y_start - y_control)*(x_end - x_control); 
+
+            // Int64 curvatureXY = x_start*y_end - x_start*y_control - x_control*y_end + x_control*y_control - y_start*x_end - y_start*x_control + y_control*x_end - y_control*x_control;
+            // Int64 curvatureXY = x_start* (y_end - y_control) - x_control*(y_start + y_end) - x_end*(y_start  + y_control);
+
+            Int64 x = x_start;
+            Int64 y = y_start;
+
+            SetPixel3D(x_start,y_start,0);                                      
+            SetPixel3D(x_end,y_end,0);                                        
+
+
+            if (curvatureXY != 0) {
+            //     Console.WriteLine("Curve is a Straight Line!");
+            //     return;
+            // } else {
+                int dirX = x_start < x_end ? 1 : -1;  
+                int dirY = y_start < y_end ? 1 : -1;  
+                int dirZ = z_start < z_end ? 1 : -1;  
+
+                Int64 xx = ((x_start - x_control) + (x_end - x_control))*dirX;
+                Int64 yy = ((y_start - y_control) + (y_end - y_control))*dirY;
+                Int64 zz = ((z_start - z_control) + (z_end - z_control))*dirZ;
+
+                Int64 xy = 2*xx*yy; 
+                Int64 xz = 2*xx*zz; 
+                Int64 yz = 2*yy*zz; 
+
+                xx *= xx; 
+                yy *= yy;
+                zz *= zz;
+
+                if (curvatureXY*dirX*dirY < 0) {  // negated curvature? 
+                    xx = -xx; 
+                    yy = -yy; 
+                    xy = -xy; 
+                    curvatureXY = -curvatureXY;
+                }
+
+                Int64 dx = 4*dirY*curvatureXY*(x_control-x_start)+xx-xy;                  // differences 1st degree 
+                Int64 dy = 4*dirX*curvatureXY*(y_start-y_control)+yy-xy;
+
+                // error 1st step //
+                xx += xx;
+                yy += yy; 
+                Int64 err = dx+dy+xy;         
+
+                Int32 stepcount=0;
+
+                do {
+                    stepcount++;
+                    if (stepcount > 100000) {
+                        return;
+                    }
+                    SetPixel3D(x,y,0);                                          // plot curve 
+                    if (x == x_end && y == y_end) return;       // last pixel -> curve finished 
+                    bool stepX = 2*err > dy;
+                    bool stepY = 2*err < dx;
+
+                    if (stepX) {
+                        x+= dirX;
+                        dx -= xy;
+                        dy += yy;
+                        err += dy;
+                    }
+
+                    if (stepY) {
+                        y+= dirY;
+                        dy -= xy;
+                        dx += xx;
+                        err += dx;
+                    }
+                } while (dy < 0 && dx > 0);        // gradient negates -> algorithm fails 
+
+                //end with straight line   
+
+            }
+            */
+
+            //check to make sure there is no gradient change
+            if (!((x_start - x_control) * (x_end - x_control) <= 0 && (y_start - y_control) * (y_end - y_control) <= 0)) {
+                Console.WriteLine("Curve Changed SIGN!");
+                return;
+            }
+            Int64 dir_x = x_start < x_end ? 1 : -1;
+            Int64 dir_y = y_start < y_end ? 1 : -1;
+
+            Int64 temp_y = (x_start - 2 * x_control + x_end);
+            Int64 temp_x = (y_start - 2 * y_control + y_end);
+
+            Int64 curve = (temp_y * (y_end - y_start) - temp_x * (x_end - x_start)) * dir_x * dir_y;
+
+            if (curve == 0) {
+                Console.WriteLine("Straight Line, no curve");
+                addLine(x_control, y_control, x_end, y_end);
+                return;
+            }
+
+            Int64 delta_yy = 2 * temp_y * temp_y;
+            Int64 delta_xx = 2 * temp_x * temp_x;
+            Int64 delta_xy = 2 * temp_x * temp_y * dir_x * dir_y;
+
+            /* error increments for P0*/
+            Int64 delta_x = (1 - 2 * Math.Abs(x_start - x_control)) * temp_x * temp_x + Math.Abs(y_start - y_control) * delta_xy - curve * Math.Abs(y_start - y_end);
+            Int64 delta_y = (1 - 2 * Math.Abs(y_start - y_control)) * temp_y * temp_y + Math.Abs(x_start - x_control) * delta_xy + curve * Math.Abs(x_start - x_end);
+
+            /* error increments for P2*/
+            Int64 delta_x_end = (1 - 2 * Math.Abs(x_end - x_control)) * temp_x * temp_x + Math.Abs(y_end - y_control) * delta_xy + curve * Math.Abs(y_start - y_end);
+            Int64 delta_y_end = (1 - 2 * Math.Abs(y_end - y_control)) * temp_y * temp_y + Math.Abs(x_end - x_control) * delta_xy - curve * Math.Abs(x_start - x_end);
+
+            if (curve < 0) {
+                /* negated curvature */
+                delta_yy = -delta_yy;
+                delta_x = -delta_x;
+                delta_x_end = -delta_x_end;
+                delta_y_end = -delta_y_end;
+                delta_xy = -delta_xy;
+                delta_xx = -delta_xx;
+                delta_y = -delta_y;
+            }
+
+            /* algorithm fails for almost straight line, check error values */
+            if (delta_x >= -delta_xx || delta_y <= -delta_yy || delta_x_end <= -delta_xx || delta_y_end >= -delta_yy) {
+                Console.WriteLine("Almost Straight Line, draw 2 straight lines");
+                x_control = (x_start + 4 * x_control + x_end) / 6;
+                y_control = (y_start + 4 * y_control + y_end) / 6;
+                /* approximation */
+                addLine(x_start, y_start, x_control, y_control);
+                addLine(x_control, y_control, x_end, y_end);
+                return;
+            }
+
+            delta_x -= delta_xy;
+            Int64 err = delta_x + delta_y; /* error of 1st step */
+            delta_y -= delta_xy;
+
+            //draw
+            Int64 x = x_start;
+            Int64 y = y_start;
+            Int64 steps = 0;
+
+            SetPixel3D(x, y,0);
+
+            while (x != x_end && y != y_end) {
+                bool step_x = 2 * err - delta_x >= 0;
+                bool step_y = 2 * err - delta_y <= 0;
+
+                if (step_x) {
+                    x += dir_x;
+                    delta_y -= delta_xy;
+                    delta_x += delta_xx;
+                    err += delta_x;
+                }
+                if (step_y) {
+                    y += dir_y;
+                    delta_x -= delta_xy;
+                    delta_y += delta_yy;
+                    err += delta_y;
+                }
+
+                SetPixel3D(x, y, 0);
+                steps++;
+            }
+            // //at least x or y has reached its final position, it anything remains, it must be a straight line
+            while (x != x_end) {
+                x += dir_x;
+                steps++;
+                SetPixel3D(x, y, 0);
+            }
+            while (y != y_end) {
+                y += dir_y;
+                steps++;
+                SetPixel3D(x, y, 0);
+            }
+            Console.Write("steps: ");
+            Console.WriteLine(steps);
+
+
+        }
+
         void draw(DrawInstruction d) {
             Int64 x = d.x_start;
             Int64 y = d.y_start;
@@ -392,6 +603,39 @@ namespace Designer {
                 }
             }
 
+        }
+
+        void SetPixel3D(Int64 x, Int64 y, Int64 z) {
+            if (Math.Abs(x - lastX) > 1 || Math.Abs(y - lastY) > 1) {
+                Console.WriteLine(String.Format("({0}, {1})", lastX, lastY));
+                Console.WriteLine(String.Format("({0}, {1})", x, y));
+                Console.WriteLine("Jump Occured!");
+            }
+            lastX = x;
+            lastY = y;            
+
+            Dot dxy = new Dot();
+            dxy.layer = 0;
+            dxy.size = 0.5f;
+            dxy.color = Veldrid.RgbaFloat.Black;
+            dxy.position = new Vector2(x, y);
+            Data.dots.Add(dxy);
+
+            Dot dxz = new Dot();
+            dxz.layer = 0;
+            dxz.size = 0.5f;
+            dxz.color = Veldrid.RgbaFloat.Black;
+            dxz.position = new Vector2(x+200, z);
+            Data.dots.Add(dxz);
+
+            Dot dzy = new Dot();
+            dzy.layer = 0;
+            dzy.size = 0.5f;
+            dzy.color = Veldrid.RgbaFloat.Black;
+            dzy.position = new Vector2(z, y+200);
+            Data.dots.Add(dzy);
+
+            dotIndex++;
         }
 
         void SetPixel(Int64 x, Int64 y) {
