@@ -22,7 +22,8 @@ namespace Designer {
         QuadraticBezier = 2,
         CubicBezier = 3,
         CatmullRom = 4,
-        Quadratic3DBezier=5
+        Quadratic3DBezier=5,
+        Straight3D=6
     }
 
     public struct DrawInstruction {
