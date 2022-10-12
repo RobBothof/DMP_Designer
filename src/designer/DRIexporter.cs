@@ -15,7 +15,7 @@ namespace Designer {
         }
 
         public void Export(String path) {
-            //start new file
+            // start new file
             // string path = "drawings/" + exportfilename + ".dri";
             // string path = exportfilename + ".dri";
             DrawInstruction dtemp = new DrawInstruction();
@@ -376,9 +376,9 @@ namespace Designer {
                 Int64 x_splitEnd = (Int64)Math.Round((1 - t) * ((1 - t) * xStart + 2 * t * xControl) + t * t * xEnd);
                 Int64 y_splitEnd = (Int64)Math.Round((1 - t) * ((1 - t) * yStart + 2 * t * yControl) + t * t * yEnd);
                 Int64 z_splitEnd = (Int64)Math.Round((1 - t) * ((1 - t) * zStart + 2 * t * zControl) + t * t * zEnd);
-                Int64 x_splitControl = (Int64) Math.Round((1 - t) * xStart + t * xControl);
-                Int64 y_splitControl = (Int64) Math.Round((1 - t) * yStart + t * yControl);
-                Int64 z_splitControl = (Int64) Math.Round((1 - t) * zStart + t * zControl);
+                Int64 x_splitControl = (Int64)Math.Round((1 - t) * xStart + t * xControl);
+                Int64 y_splitControl = (Int64)Math.Round((1 - t) * yStart + t * yControl);
+                Int64 z_splitControl = (Int64)Math.Round((1 - t) * zStart + t * zControl);
 
                 DrawBezier3DSegment(xStart, yStart, zStart, x_splitControl, y_splitControl, z_splitControl, x_splitEnd, y_splitEnd, z_splitEnd);
 
@@ -395,188 +395,251 @@ namespace Designer {
 
 
         void DrawBezier3DSegment(Int64 xStart, Int64 yStart, Int64 zStart, Int64 xControl, Int64 yControl, Int64 zControl, Int64 xEnd, Int64 yEnd, Int64 zEnd) {
-            // Console.Write("Drawing Bezier: (");
-            // Console.Write(xStart);
-            // Console.Write(" ,");
-            // Console.Write(yStart);
-            // Console.Write(" ,");
-            // Console.Write(zStart);
-            // Console.Write(" ,");
-            // Console.Write(xEnd);
-            // Console.Write(" ,");
-            // Console.Write(yEnd);
-            // Console.Write(" ,");
-            // Console.Write(zEnd);
-            // Console.WriteLine(")");
+            Console.Write("Drawing 3D Curve: (");
+            Console.Write(xStart);
+            Console.Write(" ,");
+            Console.Write(yStart);
+            Console.Write(" ,");
+            Console.Write(zStart);
+            Console.Write(" ,");
+            Console.Write(xEnd);
+            Console.Write(" ,");
+            Console.Write(yEnd);
+            Console.Write(" ,");
+            Console.Write(zEnd);
+            Console.WriteLine(")");
 
-            // Int64 sx = xEnd - xControl;
-            // Int64 xx = xStart - xControl;
-            Int64 dx = Math.Abs(zStart * (xEnd - xControl) + zControl * (xStart - xEnd) - zEnd * (xStart - xControl));
+            //// We look at the 2D projections , determine which is the longest curve
+            Int64 normal_xz = Math.Abs(zStart * (xEnd - xControl) + zControl * (xStart - xEnd) - zEnd * (xStart - xControl));
+            Int64 normal_yz = Math.Abs(zStart * (yEnd - yControl) + zControl * (yStart - yEnd) - zEnd * (yStart - yControl));
+            Int64 normal_xy = Math.Abs(xStart * (yEnd - yControl) + xControl * (yStart - yEnd) - xEnd * (yStart - yControl));
 
-            // Int64 sy = yEnd - yControl;
-            // Int64 yy = yStart - yControl;
-            Int64 dy = Math.Abs(zStart * (yEnd - yControl) + zControl * (yStart - yEnd) - zEnd * (yStart - yControl));
+            uint projection = 0;                                                // 3d plane orientation (xy)
+            if (normal_xz > normal_xy && normal_xz > normal_yz) projection = 1; // 3d plane orientation (xz)
+            if (normal_yz > normal_xy && normal_yz > normal_xz) projection = 2; // 3d plane orientation (zy)
 
-            Int64 xy = Math.Abs(xStart * (yEnd - yControl) + xControl * (yStart - yEnd) - xEnd * (yStart - yControl));
-
-            uint projection = 0;                    // 3d plane orientation (xy)
-
-            if (dx > xy && dx > dy) {
-                projection=1;                       // 3d plane orientation (xz)
-            } else if (dy > xy) {
-                projection=2;                       // 3d plane orientation (zy)
-            }
-
-            if (projection!=0) {
-                Int64 tzStart     = zStart;
-                Int64 tzControl   = zControl;
-                Int64 tzEnd       = zEnd;
-                if (projection==1) {                // swap y <-> z axis
-                    zStart   = yStart;
+            if (projection != 0) {
+                Int64 tzStart = zStart;
+                Int64 tzControl = zControl;
+                Int64 tzEnd = zEnd;
+                if (projection == 1) {                // swap y <-> z axis
+                    zStart = yStart;
                     zControl = yControl;
-                    zEnd     = yEnd;
-                    yStart   = tzStart;
+                    zEnd = yEnd;
+                    yStart = tzStart;
                     yControl = tzControl;
-                    yEnd     = tzEnd;
+                    yEnd = tzEnd;
                 }
-                if (projection==2) {                // swap y <-> z axis
-                    zStart   = xStart;
+                if (projection == 2) {                // swap y <-> z axis
+                    zStart = xStart;
                     zControl = xControl;
-                    zEnd     = xEnd;
-                    xStart   = tzStart;
+                    zEnd = xEnd;
+                    xStart = tzStart;
                     xControl = tzControl;
-                    xEnd     = tzEnd;
+                    xEnd = tzEnd;
                 }
             }
-            
-            Int64 sx = xEnd - xControl;
-            Int64 xx = xStart - xControl;
-            Int64 sy = yEnd - yControl;
-            Int64 yy = yStart - yControl;
-
-            //assert(xx*sx <= 0 && yy*sy <= 0 && (z0-z1)*(z2-z1) <= 0); // no sign change */
-
-            // if (dx > xy && dx > dy) {               // set curve plane to x-y
-            //     yStart = zStart;                    // swap y <-> z axis
-            //     zStart = yy + yControl;
-            //     yControl = zControl;
-            //     zControl = zStart - yy;
-            //     yEnd = zEnd;
-            //     zEnd = sy + zControl;
-            //     sy = yEnd - yControl;
-            //     yy = yStart - yControl;
-            //     projection = 1;                       
-            // } else if (dy > xy) {
-            //     xStart = zStart;
-            //     zStart = xx + xControl;
-            //     xControl = zControl;
-            //     zControl = zStart - xx;
-            //     xEnd = zEnd;
-            //     zEnd = sx + zControl;
-            //     sx = xEnd - xControl;
-            //     xx = xStart - xControl;
-            //     projection = 2;                       // swap x <-> z axis
-            // }
 
             Int64 err;
-            Int64 cur = xx * sy - yy * sx;
+            Int64 cur = (xStart - xControl) * (yEnd - yControl) - (yStart - yControl) * (xEnd - xControl);
 
-            if (cur == 0) { // no curve straight line
-                DrawLine3D(xStart, yStart, zStart, xEnd, yEnd, zEnd);
+            if (cur == 0) { // no curve || straight line
+                if (projection == 0) DrawLine3D(xStart, yStart, zStart, xEnd, yEnd, zEnd);
+                if (projection == 1) DrawLine3D(xStart, zStart, yStart, xEnd, zEnd, yEnd);
+                if (projection == 2) DrawLine3D(zStart, yStart, xStart, zEnd, yEnd, xEnd);
             } else {
-                //begin with shorter part
-                // if (sx * sx + sy * sy > xx * xx + yy * yy) {
-                //     // swap start - end       
-                //     xEnd = zStart;
-                //     zStart = zEnd;
-                //     zEnd = xEnd;
-                //     xEnd = xStart;
-                //     xStart = sx + xControl;
-                //     yEnd = yStart;
-                //     yStart = sy + yControl;
-                //     cur = -cur;
-                // }
+                //skip :: begin with shorter part
 
+                int dirX = xStart < xEnd ? 1 : -1;                              // x step direction 
+                int dirY = yStart < yEnd ? 1 : -1;                              // y step direction 
 
-                int dirX = xStart < xEnd ? 1 : -1;                // x step direction 
-                int dirY = yStart < yEnd ? 1 : -1;                // y step direction 
+                Int64 delta_xx = (xStart - xControl + xEnd - xControl) * dirX;
+                Int64 delta_yy = (yStart - yControl + yEnd - yControl) * dirY;
+                Int64 delta_xy = 2 * delta_xx * delta_yy;
 
-                xx += sx;
-                xx *= dirX;
-                yy += sy;
-                yy *= dirY;
-                xy = 2 * xx * yy;
-                xx *= xx;
-                yy *= yy;                                       // differences 2nd degree 
-                if (cur * dirX * dirY < 0) {                        // negated curvature? 
-                    xx = -xx;
-                    yy = -yy;
-                    xy = -xy;
+                delta_xx *= delta_xx;
+                delta_yy *= delta_yy;                                                           // differences 2nd degree 
+
+                if (cur * dirX * dirY < 0) {                                                    // negated curvature? 
+                    delta_xx = -delta_xx;
+                    delta_yy = -delta_yy;
+                    delta_xy = -delta_xy;
                     cur = -cur;
                 }
 
-                dx = 4 * dirY * cur * (xControl - xStart) + xx - xy;        // differences 1st degree
-                dy = 4 * dirX * cur * (yStart - yControl) + yy - xy;
-                xx += xx;
-                yy += yy;
-                err = dx + dy + xy;                                         // error 1st step */
+                Int64 delta_x = 4 * dirY * cur * (xControl - xStart) + delta_xx - delta_xy;     // differences 1st degree
+                Int64 delta_y = 4 * dirX * cur * (yStart - yControl) + delta_yy - delta_xy;
+                delta_xx += delta_xx;
+                delta_yy += delta_yy;
+                err = delta_x + delta_y + delta_xy;                                             // error 1st step */
+
+                Int64 delta_xz, delta_yz, errZ, delta_z;
+                if (zEnd != zStart) {
+                    delta_xz = Math.Abs((yStart - yControl) * zEnd + (yEnd - yStart) * zControl - (yEnd - yControl) * zStart);    // x part of surface normal 
+                    delta_yz = Math.Abs((xStart - xControl) * zEnd + (xEnd - xStart) * zControl - (xEnd - xControl) * zStart);    // y part of surface normal 
+                    delta_z = (delta_xz * Math.Abs(xEnd - xStart) + delta_yz * Math.Abs(yEnd - yStart)) / Math.Abs(zEnd - zStart);
+                    errZ = delta_z / 2;
+                } else {
+                    delta_xz = 0;
+                    delta_yz = 0;
+                    errZ = 0;
+                    delta_z = 0;
+                }
+                int dirZ = zStart < zEnd ? 1 : -1;                          // z step direction
 
                 Int64 x = xStart;
                 Int64 y = yStart;
                 Int64 z = zStart;
 
-                Int64 ex,ey,ez,dz;
-                if (zEnd != zStart) {
-                    ex = Math.Abs((yStart - yControl) * zEnd + (yEnd - yStart) * zControl - (yEnd - yControl) * zStart);    // x part of surface normal 
-                    ey = Math.Abs((xStart - xControl) * zEnd + (xEnd - xStart) * zControl - (xEnd - xControl) * zStart);    // y part of surface normal 
-                    dz = (ex * Math.Abs(xEnd - xStart) + ey * Math.Abs(yEnd - yStart)) / Math.Abs(zEnd - zStart);
-                    ez = dz / 2;
-                } else {
-                    ex = 0;
-                    ey = 0;
-                    ez = 0;
-                    dz = 0;                    
-                }
-                int dirZ = zStart < zEnd ? 1 : -1;                // z step direction
+                //we can skip this when actually plotting, as we are already at Start Position.
+                if (projection == 0) SetPixel3D(x, y, z);
+                if (projection == 1) SetPixel3D(x, z, y);
+                if (projection == 2) SetPixel3D(z, y, x);
 
-                do {
-                    //plot curve
-                    if (projection == 0) SetPixel3D(x, y, z);
-                    if (projection == 1) SetPixel3D(x, z, y);
-                    if (projection == 2) SetPixel3D(z, y, x);
+                UInt64 steps = 0;
 
-                    if (x == xEnd && y == yEnd) return;                     // last pixel -> curve finished 
+                while (x != xEnd && y != yEnd) {
 
-                    bool yStep = 2 * err < dx;                              // test for y step 
-                    bool xStep = 2 * err > dy;                              // test for x step 
+                    bool xStep = 2 * err > delta_y;                              // test for x step 
+                    bool yStep = 2 * err < delta_x;                              // test for y step 
 
                     if (xStep) {
                         x += dirX;                                          // x step 
-                        dx -= xy;
-                        dy += yy;
-                        err += dy;
-                        ez -= ex;
+                        delta_x -= delta_xy;
+                        delta_y += delta_yy;
+                        err += delta_y;
+                        errZ -= delta_xz;
                     }
 
                     if (yStep) {
                         y += dirY;                                          // y step 
-                        dy -= xy;
-                        dx += xx;
-                        err += dx;
-                        ez -= ey;
+                        delta_y -= delta_xy;
+                        delta_x += delta_xx;
+                        err += delta_x;
+                        errZ -= delta_yz;
                     }
 
-                    if (ez < 0) {
-                        ez += dz;
+                    if (errZ < 0) {
+                        errZ += delta_z;
                         z += dirZ;                                          // z step 
                     }
-                } while (dy < dx);                                          // gradient negates -> algorithm fails
 
-                /* plot remaining part as straight line to end */
-                if (projection == 0) DrawLine3D(x, y, z, xEnd, yEnd, zEnd);
-                if (projection == 1) DrawLine3D(x, z, y, xEnd, zEnd, yEnd);
-                if (projection == 2) DrawLine3D(z, y, x, zEnd, yEnd, xEnd);
+                    if (projection == 0) SetPixel3D(x, y, z);
+                    if (projection == 1) SetPixel3D(x, z, y);
+                    if (projection == 2) SetPixel3D(z, y, x);
+
+                    steps++;
+                }
+
+                if (x != xEnd || y != yEnd || z != zEnd) {
+                    Console.WriteLine("finishing curve");
+
+                    delta_x = Math.Abs(xEnd - x);
+                    delta_y = Math.Abs(yEnd - y);
+                    delta_z = Math.Abs(zEnd - z);
+                    Int64 deltaMax = Math.Max(delta_z, Math.Max(delta_x, delta_y));
+
+                    Int64 errX,errY;
+                    errX = errY = errZ = deltaMax / 2; ;
+
+                    for (Int64 i = deltaMax; i > 0; i--) {
+                        errX -= delta_x;
+                        if (errX < 0) {
+                            errX += deltaMax;
+                            x += dirX;                                      // x step
+                        }
+
+                        errY -= delta_y;
+                        if (errY < 0) {
+                            errY += deltaMax;
+                            y += dirY;                                      // y step
+                        }
+
+                        errZ -= delta_z;
+                        if (errZ < 0) {
+                            errZ += deltaMax;
+                            z += dirZ;                                      // z step
+                        }
+
+                        steps++;
+
+                        if (projection == 0) SetPixel3D(x, y, z);
+                        if (projection == 1) SetPixel3D(x, z, y);
+                        if (projection == 2) SetPixel3D(z, y, x);
+                    }
+                }
+
+                Console.Write("finished curve in ");
+                Console.Write(steps);
+                Console.WriteLine(" steps.");            
             }
+        }
+
+
+        void DrawLine3D(Int64 xStart, Int64 yStart, Int64 zStart, Int64 xEnd, Int64 yEnd, Int64 zEnd) {
+            Console.Write("Drawing 3D Line: (");
+            Console.Write(xStart);
+            Console.Write(" ,");
+            Console.Write(yStart);
+            Console.Write(" ,");
+            Console.Write(zStart);
+            Console.Write(" ,");
+            Console.Write(xEnd);
+            Console.Write(" ,");
+            Console.Write(yEnd);
+            Console.Write(" ,");
+            Console.Write(zEnd);
+            Console.WriteLine(")");
+
+            Int64 deltaX = Math.Abs(xEnd - xStart);
+            int dirX = xStart < xEnd ? 1 : -1;
+
+            Int64 deltaY = Math.Abs(yEnd - yStart);
+            int dirY = yStart < yEnd ? 1 : -1;
+
+            Int64 deltaZ = Math.Abs(zEnd - zStart);
+            int dirZ = zStart < zEnd ? 1 : -1;
+
+            Int64 deltaMax = Math.Max(deltaZ, Math.Max(deltaX, deltaY));
+
+            xEnd = yEnd = zEnd = deltaMax / 2;
+
+            Int64 x = xStart;
+            Int64 y = yStart;
+            Int64 z = zStart;
+
+            Int64 xErr = xEnd;
+            Int64 yErr = yEnd;
+            Int64 zErr = zEnd;
+
+            UInt64 steps = 0;
+            // SetPixel3D(x, y, z);
+
+            for (Int64 i = deltaMax; i > 0; i--) {
+                xErr -= deltaX;
+                if (xErr < 0) {
+                    xErr += deltaMax;
+                    x += dirX;
+                }
+
+                yErr -= deltaY;
+                if (yErr < 0) {
+                    yErr += deltaMax;
+                    y += dirY;
+                }
+
+                zErr -= deltaZ;
+                if (zErr < 0) {
+                    zErr += deltaMax;
+                    z += dirZ;
+                }
+                SetPixel3D(x, y, z);
+                steps++;
+            }
+
+            Console.Write("finished line in ");
+            Console.Write(steps);
+            Console.WriteLine(" steps.");            
         }
 
         void draw(DrawInstruction d) {
@@ -650,63 +713,6 @@ namespace Designer {
 
         }
 
-        void DrawLine3D(Int64 xStart, Int64 yStart, Int64 zStart, Int64 xEnd, Int64 yEnd, Int64 zEnd) {
-            // Console.Write("Drawing StraightLine: (");
-            // Console.Write(xStart);
-            // Console.Write(" ,");
-            // Console.Write(yStart);
-            // Console.Write(" ,");
-            // Console.Write(zStart);
-            // Console.Write(" ,");
-            // Console.Write(xEnd);
-            // Console.Write(" ,");
-            // Console.Write(yEnd);
-            // Console.Write(" ,");
-            // Console.Write(zEnd);
-            // Console.WriteLine(")");
-
-            Int64 deltaX = Math.Abs(xEnd - xStart);
-            int dirX = xStart < xEnd ? 1 : -1;
-
-            Int64 deltaY = Math.Abs(yEnd - yStart);
-            int dirY = yStart < yEnd ? 1 : -1;
-
-            Int64 deltaZ = Math.Abs(zEnd - zStart);
-            int dirZ = zStart < zEnd ? 1 : -1;
-
-            Int64 deltaMax = Math.Max(deltaZ, Math.Max(deltaX, deltaY));
-            
-            xEnd = yEnd = zEnd = deltaMax / 2;
-
-            Int64 x = xStart;
-            Int64 y = yStart;
-            Int64 z = zStart;
-
-            Int64 xErr = xEnd;
-            Int64 yErr = yEnd;
-            Int64 zErr = zEnd;
-
-            for (Int64 i = deltaMax; i >= 0; i--) {
-                SetPixel3D(x, y, z);
-                xErr -= deltaX; 
-                if (xErr < 0) { 
-                    xErr += deltaMax; 
-                    x += dirX; 
-                }
-                
-                yErr -= deltaY; 
-                if (yErr < 0) { 
-                    yErr += deltaMax; 
-                    y += dirY; 
-                    }
-
-                zErr -= deltaZ; 
-                if (zErr < 0) { 
-                    zErr += deltaMax; 
-                    z += dirZ; 
-                }
-            }
-        }
 
 
         void SetPixel3D(Int64 x, Int64 y, Int64 z) {

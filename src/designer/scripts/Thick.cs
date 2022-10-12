@@ -15,7 +15,7 @@ public class Thick : IGenerator {
         Data.lines.Insert(0,new Line());
         Data.lines[0].type=lineType.Quadratic3DBezier;
         // Data.lines[0].lineData = new Vector2[] {new Vector2(1000,1000), new Vector2(250000,1000), new Vector2(500000,1000)};
-        Data.lines[0].points = new Vector3[] {new Vector3(0,50,20), new Vector3(50,0,50), new Vector3(100,25,20)};
+        Data.lines[0].points = new Vector3[] {new Vector3(0,1,20), new Vector3(4,100,20), new Vector3(100,1,20)};
 
         // Data.lines.Insert(0,new Line());
         // Data.lines[0].type=lineType.Straight3D;
