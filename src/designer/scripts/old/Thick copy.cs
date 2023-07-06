@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Designer;
 
-public class Thick : IGenerator {
+public class Thick2 : IGenerator {
     public static Random _rand;
 
     public void Generate(int seed) {
@@ -13,9 +13,10 @@ public class Thick : IGenerator {
         Data.dots.Clear();
 
         Data.lines.Insert(0,new Line());
-        Data.lines[0].type=lineType.Quadratic3DBezier;
-        // Data.lines[0].lineData = new Vector2[] {new Vector2(1000,1000), new Vector2(250000,1000), new Vector2(500000,1000)};
-        Data.lines[0].points = new Vector3[] {new Vector3(0,1,20), new Vector3(4,100,20), new Vector3(100,1,20)};
+        // Data.lines[0].type=lineType.QuadraticBezier;
+        Data.lines[0].type=lineType.QuadraticBezier3D;
+        // Data.lines[0].lineData = new Vector2[] {new Vector2(1000,1000), new Vector2(250000,50000), new Vector2(500000,1000)};
+        Data.lines[0].points = new Vector3[] {new Vector3(0,0,5000), new Vector3(450000,500000,5000), new Vector3(10000,1000000,5000)};
 
         // Data.lines.Insert(0,new Line());
         // Data.lines[0].type=lineType.Straight3D;

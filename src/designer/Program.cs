@@ -22,11 +22,37 @@ namespace Designer {
         QuadraticBezier = 2,
         CubicBezier = 3,
         CatmullRom = 4,
-        Quadratic3DBezier=5,
+        QuadraticBezier3D=5,
         Straight3D=6
     }
 
     public struct DrawInstruction {
+        public UInt64 index;
+        public lineType type;
+        public sbyte dirX;
+        public sbyte dirY;
+        public sbyte dirZ;
+        public sbyte projection;
+        public Int64 startX;
+        public Int64 startY;
+        public Int64 startZ;
+        public Int64 endX;
+        public Int64 endY;
+        public Int64 endZ;
+        public Int64 deltaX;
+        public Int64 deltaY;
+        public Int64 deltaZ;
+        public Int64 deltaXX;
+        public Int64 deltaYY;
+        public Int64 deltaXY;
+        public Int64 deltaXZ;
+        public Int64 deltaYZ;
+        public Int64 err;
+        public Int64 errZ;
+        public Int64 steps;
+    }
+
+    public struct DrawInstruction2 {
         public UInt64 index;
         public lineType type;
         public sbyte dir_x;
@@ -43,11 +69,13 @@ namespace Designer {
         public Int64 err;
         public Int64 steps;
     }
+
     public class Line {
         public Vector2[] lineData;
         public Vector3[] points;
         public lineType type;
         public int layer;
+        public uint vCount;
     }
 
     public class Dot {
@@ -138,7 +166,7 @@ namespace Designer {
         private static Vector3 _drawColor = new Vector3(0.3f, 0.6f, 0.4f);
         private static Vector2 _cameraPosition = new Vector2(0.0f, 0.0f);
         private static int _zoom = 13;
-        private static float[] _zoomlevels = { 1f, 1.5f, 2f, 3.33f, 5f, 6.25f, 8.33f, 12.5f, 16.67f, 25f, 33.33f, 50f, 66.67f, 100f, 150f, 200f, 300f, 400f, 500f, 8000f, 12000f, 16000f, 24000f, 32000f,64000f,128000f };
+        private static float[] _zoomlevels = { 1f, 1.5f, 2f, 3.33f, 5f, 6.25f, 8.33f, 12.5f, 16.67f, 25f, 33.33f, 50f, 66.67f, 100f, 150f, 200f, 300f, 400f, 600f, 800f, 1000f, 2000f, 4000f, 6000f, 8000f, 12000f, 16000f, 24000f, 32000f,64000f,128000f };
         private static float _linewidth = 3f;
         private static float _cameraRotation = 0.0f;
 
@@ -521,110 +549,119 @@ namespace Designer {
                 List<LineVertex> lineVertices = new List<LineVertex>();
 
                 for (int l = 0; l < Data.lines.Count; l++) {
-                    if (Data.lines[l].type == lineType.Straight) {
-                        for (int ctr = 0; ctr < Data.lines[l].lineData.Length; ctr++) {
+                    if (Data.lines[l].type == lineType.Straight3D) {
+                        for (int ctr = 0; ctr < Data.lines[l].points.Length; ctr++) {
 
                             LineVertex v1 = new LineVertex();
-                            v1.Width = _linewidth;
+                            v1.Width = _linewidth * Data.lines[l].points[ctr].Z;
                             v1.Edge = 0;
                             v1.Color = new RgbaFloat(_drawColor.X, _drawColor.Y, _drawColor.Z, 1.0f);
 
                             LineVertex v2 = new LineVertex();
-                            v2.Width = _linewidth;
+                            v2.Width = _linewidth * Data.lines[l].points[ctr].Z;
                             v2.Edge = 1;
                             v2.Color = new RgbaFloat(_drawColor.X, _drawColor.Y, _drawColor.Z, 1.0f);
 
                             Vector2 vnorm;
-                            //line start
+
                             if (ctr == 0) {
-                                vnorm = Vector2.Normalize(Vector2.Subtract(Data.lines[l].lineData[ctr + 1], Data.lines[l].lineData[ctr]));
+                                vnorm = Vector2.Normalize(Vector2.Subtract(Data.lines[l].points[ctr + 1].XY(), Data.lines[l].points[ctr].XY()));
                                 Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
-                                v1.Position = Data.lines[l].lineData[ctr] - vperp * _linewidth;
-                                v2.Position = Data.lines[l].lineData[ctr] + vperp * _linewidth;
+                                v1.Position = Data.lines[l].points[ctr].XY() - vperp * v1.Width;
+                                v2.Position = Data.lines[l].points[ctr].XY() + vperp * v2.Width;
                             }
 
-                            if (ctr > 0 && ctr + 1 < Data.lines[l].lineData.Length) {
-                                Vector2 vnorm1 = Vector2.Normalize(Vector2.Subtract(Data.lines[l].lineData[ctr], Data.lines[l].lineData[ctr - 1])); //incoming line
-                                Vector2 vnorm2 = Vector2.Normalize(Vector2.Subtract(Data.lines[l].lineData[ctr + 1], Data.lines[l].lineData[ctr])); //outgoing line
+                            if (ctr > 0 && ctr + 1 < Data.lines[l].points.Length) {
+                                Vector2 vnorm1 = Vector2.Normalize(Vector2.Subtract(Data.lines[l].points[ctr].XY(), Data.lines[l].points[ctr - 1].XY())); //incoming line
+                                Vector2 vnorm2 = Vector2.Normalize(Vector2.Subtract(Data.lines[l].points[ctr + 1].XY(), Data.lines[l].points[ctr].XY())); //outgoing line
                                 vnorm = Vector2.Normalize(new Vector2((vnorm1.X + vnorm2.X), (vnorm1.Y + vnorm2.Y)));
-                                float len = _linewidth / Vector2.Dot(vnorm1, vnorm);
+                                float len = (v1.Width) / Vector2.Dot(vnorm1, vnorm);
                                 Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
-                                v1.Position = Data.lines[l].lineData[ctr] - vperp * (len);
-                                v2.Position = Data.lines[l].lineData[ctr] + vperp * (len);
+                                v1.Position = Data.lines[l].points[ctr].XY() - vperp * (len);
+                                v2.Position = Data.lines[l].points[ctr].XY() + vperp * (len);
                             }
 
                             //line end
-                            if (ctr + 1 == Data.lines[l].lineData.Length) {
-                                vnorm = Vector2.Normalize(Vector2.Subtract(Data.lines[l].lineData[ctr], Data.lines[l].lineData[ctr - 1]));
+                            if (ctr + 1 == Data.lines[l].points.Length) {
+                                vnorm = Vector2.Normalize(Vector2.Subtract(Data.lines[l].points[ctr].XY(), Data.lines[l].points[ctr - 1].XY()));
                                 Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
-                                v1.Position = Data.lines[l].lineData[ctr] - vperp * _linewidth;
-                                v2.Position = Data.lines[l].lineData[ctr] + vperp * _linewidth;
+                                v1.Position = Data.lines[l].points[ctr].XY() - vperp * v1.Width;
+                                v2.Position = Data.lines[l].points[ctr].XY() + vperp * v2.Width;
                             }
 
                             lineVertices.Insert(vCount + ctr * 2, v1);
                             lineVertices.Insert(vCount + ctr * 2 + 1, v2);
 
                         }
-                        vCount += Data.lines[l].lineData.Length * 2;
+                        Data.lines[l].vCount = (uint) Data.lines[l].points.Length * 2;                        
+                        vCount += Data.lines[l].points.Length * 2;
                     }
 
-                    if (Data.lines[l].type == lineType.Quadratic3DBezier) {
+                    if (Data.lines[l].type == lineType.QuadraticBezier3D) {
                         //generate points
-                        Vector3[] points = new Vector3[101];
                         Vector3 A = Data.lines[l].points[0];
                         Vector3 B = Data.lines[l].points[1];
                         Vector3 C = Data.lines[l].points[2];
+                        Vector3[] points = new Vector3[201];
 
-                        for (int p = 0; p <= 100; p++) {
-                            float t = ((float)p) / 100f;
+                        for (int p = 0; p <= 200; p++) {
+                            float t = ((float)p) / 200f;
                             points[p] = (1f - t) * (1f - t) * A + 2 * (1f - t) * t * B + t * t * C;
                         }
                         for (int pctr = 0; pctr < points.Length; pctr++) {
                             LineVertex v1 = new LineVertex();
-                            v1.Width = points[pctr].Z;
+                            v1.Width = points[pctr].Z*_linewidth;
+                            // v1.Width = _linewidth;
                             v1.Edge = 0;
                             v1.Color = new RgbaFloat(_drawColor.X, _drawColor.Y, _drawColor.Z, 1.0f);
 
                             LineVertex v2 = new LineVertex();
-                            v2.Width = points[pctr].Z;
+                            v2.Width = points[pctr].Z*_linewidth;
+                            // v2.Width = _linewidth;
                             v2.Edge = 1;
                             v2.Color = new RgbaFloat(_drawColor.X, _drawColor.Y, _drawColor.Z, 1.0f);
 
-                            Vector3 vnorm;
+                            Vector2 point = new Vector2(points[pctr].X,points[pctr].Y);
+
+                            Vector2 vnorm;
                             //line start
                             if (pctr == 0) {
-                                vnorm = Vector3.Normalize(Vector3.Subtract(points[pctr + 1], points[pctr]));
-                                Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X) * points[pctr].Z*_linewidth;
-                                v1.Position = new Vector2(points[pctr].X - vperp.X,points[pctr].Y - vperp.Y);
-                                v2.Position = new Vector2(points[pctr].X + vperp.X,points[pctr].Y + vperp.Y);
-                                // v2.Position = Vector2((points[pctr] + vperp * v2.Width).X,;
+                                Vector2 nextpoint = new Vector2(points[pctr+1].X,points[pctr+1].Y);                                
+                                vnorm = Vector2.Normalize(Vector2.Subtract(nextpoint, point));
+                                Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
+                                v1.Position = point - vperp * points[pctr].Z*_linewidth;
+                                v2.Position = point + vperp * points[pctr].Z*_linewidth;
                             }
 
                             if (pctr > 0 && pctr + 1 < points.Length) {
-                                Vector3 vnorm1 = Vector3.Normalize(Vector3.Subtract(points[pctr], points[pctr - 1])); //incoming line
-                                Vector3 vnorm2 = Vector3.Normalize(Vector3.Subtract(points[pctr + 1], points[pctr])); //outgoing line
-                                vnorm = Vector3.Normalize(new Vector3((vnorm1.X + vnorm2.X), (vnorm1.Y + vnorm2.Y), (vnorm1.Z + vnorm2.Z)));
-                                // float len = (_linewidth) / Vector3.Dot(vnorm1, vnorm);
-                                Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X) * ((points[pctr].Z*_linewidth)/ Vector3.Dot(vnorm1, vnorm));
-                                v1.Position = new Vector2(points[pctr].X - vperp.X,points[pctr].Y - vperp.Y);
-                                v2.Position = new Vector2(points[pctr].X + vperp.X,points[pctr].Y + vperp.Y);
+                                Vector2 nextpoint = new Vector2(points[pctr+1].X,points[pctr+1].Y);                                
+                                Vector2 prevpoint = new Vector2(points[pctr-1].X,points[pctr-1].Y);                                
+                                Vector2 vnorm1 = Vector2.Normalize(Vector2.Subtract(point, prevpoint)); //incoming line
+                                Vector2 vnorm2 = Vector2.Normalize(Vector2.Subtract(nextpoint, point)); //outgoing line
+                                vnorm = Vector2.Normalize(new Vector2((vnorm1.X + vnorm2.X), (vnorm1.Y + vnorm2.Y)));
+                                float len = (points[pctr].Z*_linewidth) / Vector2.Dot(vnorm1, vnorm);
+                                Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
+                                v1.Position = point- vperp * (len);
+                                v2.Position = point + vperp * (len);
                             }
 
                             //line end
                             if (pctr + 1 == points.Length) {
-                                vnorm = Vector3.Normalize(Vector3.Subtract(points[pctr], points[pctr - 1]));
-                                Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X) * points[pctr].Z*_linewidth;
-                                v1.Position = new Vector2(points[pctr].X - vperp.X,points[pctr].Y - vperp.Y);
-                                v2.Position = new Vector2(points[pctr].X + vperp.X,points[pctr].Y + vperp.Y);                                
+                                Vector2 prevpoint = new Vector2(points[pctr-1].X,points[pctr-1].Y);                                
+                                vnorm = Vector2.Normalize(Vector2.Subtract(point, prevpoint));
+                                Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
+                                v1.Position = point - vperp * points[pctr].Z*_linewidth;
+                                v2.Position = point + vperp * points[pctr].Z*_linewidth;
                             }
 
                             lineVertices.Insert(vCount + pctr * 2, v1);
                             lineVertices.Insert(vCount + pctr * 2 + 1, v2);
+
                         }
+                        Data.lines[l].vCount = (uint) points.Length * 2;
                         vCount += points.Length * 2;
-
                     }
-
+                    /*
                     if (Data.lines[l].type == lineType.QuadraticBezier) {
                         //generate points
                         Vector2[] points = new Vector2[101];
@@ -674,13 +711,14 @@ namespace Designer {
                                 v2.Position = points[pctr] + vperp * v2.Width;
                             }
 
-                            lineVertices.Insert(vCount + pctr * 2, v1);
+                             lineVertices.Insert(vCount + pctr * 2, v1);
                             lineVertices.Insert(vCount + pctr * 2 + 1, v2);
                         }
                         vCount += points.Length * 2;
-
                     }
+                    */
 
+                    /*
                     if (Data.lines[l].type == lineType.CubicBezier) {
                         //generate points
                         Vector2[] points = new Vector2[400];
@@ -737,6 +775,7 @@ namespace Designer {
                         }
                         vCount += points.Length * 2;
                     }
+                    */
                 }
 
                 _graphicsDevice.DisposeWhenIdle(_lineVertexBuffer);
@@ -868,13 +907,20 @@ namespace Designer {
                 // if (Data.lines[l].type == lineType.CubicBezier) {
                 //     vLength = (uint)Data.lines[l].lineData.Length * 2 * 100;
                 // }
-                if (Data.lines[l].type == lineType.QuadraticBezier) {
-                    // vLength = (uint)Data.lines[l].lineData.Length + 1;
-                    vLength = 101*2;
-                }
-                // if (Data.lines[l].type == lineType.Straight) {
-                //     vLength = (uint)Data.lines[l].lineData.Length * 2;
+                // if (Data.lines[l].type == lineType.QuadraticBezier) {
+                //     // vLength = (uint)Data.lines[l].lineData.Length + 1;
+                //     vLength = 101*2;
                 // }
+
+                if (Data.lines[l].type == lineType.QuadraticBezier3D) {
+                    // vLength = (uint)Data.lines[l].lineData.Length + 1;
+                    vLength = Data.lines[l].vCount;
+                }
+
+                if (Data.lines[l].type == lineType.Straight3D) {
+                    // vLength = (uint)Data.lines[l].points.Length * 2;
+                    vLength = Data.lines[l].vCount;
+                }
                 _commandList.Draw(vertexCount: vLength, instanceCount: 1, vertexStart: vStart, instanceStart: 0);
                 vStart += vLength;
             }
