@@ -17,7 +17,7 @@ using IniParser;
 namespace Designer {
 
     public enum lineType : byte {
-        none = 0,
+        None = 0,
         Straight = 1,
         QuadraticBezier = 2,
         CubicBezier = 3,
@@ -26,13 +26,21 @@ namespace Designer {
         Straight3D=6
     }
 
+    public enum accelerationType : byte {
+        Continue = 0,
+        Start = 1,
+        Stop = 2,
+        Single = 3
+    }
+
     public struct DrawInstruction {
         public UInt64 index;
         public lineType type;
+        public accelerationType accelType;
         public sbyte dirX;
         public sbyte dirY;
         public sbyte dirZ;
-        public sbyte projection;
+        public byte projection;
         public Int64 startX;
         public Int64 startY;
         public Int64 startZ;
@@ -49,10 +57,10 @@ namespace Designer {
         public Int64 deltaYZ;
         public Int64 err;
         public Int64 errZ;
-        public Int64 steps;
+        public UInt64 steps;
     }
 
-    public struct DrawInstruction2 {
+    public struct DrawInstruction2D {
         public UInt64 index;
         public lineType type;
         public sbyte dir_x;
@@ -224,7 +232,6 @@ namespace Designer {
             if (_iniData["ClearColor"]["G"] != null) _clearColor.Y = float.Parse(_iniData["ClearColor"]["G"]);
             if (_iniData["ClearColor"]["B"] != null) _clearColor.Z = float.Parse(_iniData["ClearColor"]["B"]);
 
-
             if (_iniData["Line"]["Width"] != null) _linewidth = float.Parse(_iniData["Line"]["Width"]);
 
             if (_iniData["Draw"]["Width"] != null) _drawSize[0] = int.Parse(_iniData["Draw"]["Width"]);
@@ -389,18 +396,18 @@ namespace Designer {
             gridLinePipelineDescription.ResourceLayouts = new[] { viewportResourceLayout };
             _gridLinePipeline = factory.CreateGraphicsPipeline(gridLinePipelineDescription);
 
-            //// -------------------      ------------------------- ////
+            //// ------------------- Init ------------------------- ////
 
-            //create the commandlist, which lets us record and execute graphics commands
+            // Create the commandlist, to record and execute graphics commands.
             _commandList = factory.CreateCommandList();
 
-            //create ImGuiRenderer
+            // Create ImGuiRenderer.
             _imGuiRenderer = new ImGuiRenderer(_graphicsDevice, _graphicsDevice.MainSwapchain.Framebuffer.OutputDescription, _window.Width, _window.Height, ColorSpaceHandling.Linear);
 
             Stopwatch sw = Stopwatch.StartNew();
             double previousTime = sw.Elapsed.TotalSeconds;
 
-            //RENDERING LOOP
+            //// ------------------- RENDERING LOOP ------------------------- ////
             while (_window.Exists) {
                 InputSnapshot snapshot = _window.PumpEvents();
                 if (_window.Exists) {
@@ -414,34 +421,35 @@ namespace Designer {
                     rebuildGUI();
                     ImGui.Render();
 
-                    //recreate the buffers used by gui, prepare for drawing
+                    // Recreate GUI buffers.
                     _imGuiRenderer.UpdateGeometry(_graphicsDevice);
 
-                    //We stage all drawwing commands in the commandlist
+                    // Stage all drawwing commands in the commandlist.
                     _commandList.Begin();
-                    //set and clear framebuffer
+
+                    // Set and clear framebuffer.
                     _commandList.SetFramebuffer(_graphicsDevice.MainSwapchain.Framebuffer);
                     _commandList.ClearColorTarget(0, new RgbaFloat(_clearColor.X, _clearColor.Y, _clearColor.Z, 1f));
                     _commandList.ClearDepthStencil(1f);
 
-                    //create view and projection matrix
+                    // Create view matrix and projection matrix.
                     // _commandList.UpdateBuffer(_projectionBuffer, 0, Matrix4x4.CreateOrthographic(_window.Width * 100f / _zoomlevels[_zoom], _window.Height * 100f / _zoomlevels[_zoom], 0.1f, 10000f));
                     _commandList.UpdateBuffer(_projectionBuffer, 0, Matrix4x4.CreateOrthographic(_window.Width * (51200f / (R2 * MathF.PI)) / _zoomlevels[_zoom], _window.Height * (51200f / (R2 * MathF.PI)) / _zoomlevels[_zoom], 0.1f, 50000f));
                     _commandList.UpdateBuffer(_cameraBuffer, 0, Matrix4x4.CreateLookAt(new Vector3(_cameraPosition.X, _cameraPosition.Y, 1000), new Vector3(_cameraPosition.X, _cameraPosition.Y, 0f), Vector3.UnitY));
                     _commandList.UpdateBuffer(_rotationBuffer, 0, Matrix4x4.CreateFromAxisAngle(Vector3.UnitZ, _cameraRotation * 0.01745329252f));
                     _commandList.UpdateBuffer(_translationBuffer, 0, new Vector4(_drawSize[0] * (2560f / (R2 * MathF.PI)), _drawSize[1] * (2560f / (R2 * MathF.PI)), 0, 1));
 
+                    // Update geometry if needed and draw
                     UpdateGridLineGeometry();
-                    DrawGridLines();
-
-                    //Update our geometry if needed and draw
                     UpdateLineGeometry();
-                    DrawLines();
-
                     UpdateDotGeometry();
+
+                    DrawGridLines();
+                    DrawLines();
                     DrawDots();
 
-                    ////Draw UI
+
+                    //// Draw UI
                     _imGuiRenderer.Draw(_commandList);
 
                     // End() must be called before commands can be submitted for execution.
@@ -455,7 +463,7 @@ namespace Designer {
                 }
             }
 
-            //CLEAN UP
+            // Clean up.
             _linePipeline.Dispose();
             _lineVertexBuffer.Dispose();
             foreach (Shader shader in _lineShaders) {
@@ -481,8 +489,6 @@ namespace Designer {
             _imGuiRenderer.Dispose();
             _commandList.Dispose();
             _graphicsDevice.Dispose();
-
-            //DONE
         }
 
         private static void Export(string s) {
@@ -492,7 +498,7 @@ namespace Designer {
 
         private static void Generate() {
             if (File.Exists(scriptNames[_selectedScript])) {
-                //run script
+                // Conpile and run script
                 if (!_useRandomSeed) {
                     _seed = new Random().Next();
                 }
@@ -549,6 +555,9 @@ namespace Designer {
                 List<LineVertex> lineVertices = new List<LineVertex>();
 
                 for (int l = 0; l < Data.lines.Count; l++) {
+
+                    // Straight Lines
+
                     if (Data.lines[l].type == lineType.Straight3D) {
                         for (int ctr = 0; ctr < Data.lines[l].points.Length; ctr++) {
 
@@ -597,15 +606,17 @@ namespace Designer {
                         vCount += Data.lines[l].points.Length * 2;
                     }
 
+                    // Curves
+
                     if (Data.lines[l].type == lineType.QuadraticBezier3D) {
                         //generate points
                         Vector3 A = Data.lines[l].points[0];
                         Vector3 B = Data.lines[l].points[1];
                         Vector3 C = Data.lines[l].points[2];
-                        Vector3[] points = new Vector3[201];
+                        Vector3[] points = new Vector3[101];
 
-                        for (int p = 0; p <= 200; p++) {
-                            float t = ((float)p) / 200f;
+                        for (int p = 0; p <= 100; p++) {
+                            float t = ((float)p) / 100;
                             points[p] = (1f - t) * (1f - t) * A + 2 * (1f - t) * t * B + t * t * C;
                         }
                         for (int pctr = 0; pctr < points.Length; pctr++) {
@@ -661,121 +672,6 @@ namespace Designer {
                         Data.lines[l].vCount = (uint) points.Length * 2;
                         vCount += points.Length * 2;
                     }
-                    /*
-                    if (Data.lines[l].type == lineType.QuadraticBezier) {
-                        //generate points
-                        Vector2[] points = new Vector2[101];
-                        Vector2 A = Data.lines[l].lineData[0];
-                        Vector2 B = Data.lines[l].lineData[1];
-                        Vector2 C = Data.lines[l].lineData[2];
-
-                        for (int p = 0; p <= 100; p++) {
-                            float t = ((float)p) / 100f;
-                            points[p] = (1f - t) * (1f - t) * A + 2 * (1f - t) * t * B + t * t * C;
-                        }
-                        for (int pctr = 0; pctr < points.Length; pctr++) {
-                            LineVertex v1 = new LineVertex();
-                            v1.Width = _linewidth;
-                            v1.Edge = 0;
-                            v1.Color = new RgbaFloat(_drawColor.X, _drawColor.Y, _drawColor.Z, 1.0f);
-
-                            LineVertex v2 = new LineVertex();
-                            v2.Width = _linewidth;
-                            v2.Edge = 1;
-                            v2.Color = new RgbaFloat(_drawColor.X, _drawColor.Y, _drawColor.Z, 1.0f);
-
-                            Vector2 vnorm;
-                            //line start
-                            if (pctr == 0) {
-                                vnorm = Vector2.Normalize(Vector2.Subtract(points[pctr + 1], points[pctr]));
-                                Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
-                                v1.Position = points[pctr] - vperp * v1.Width;
-                                v2.Position = points[pctr] + vperp * v2.Width;
-                            }
-
-                            if (pctr > 0 && pctr + 1 < points.Length) {
-                                Vector2 vnorm1 = Vector2.Normalize(Vector2.Subtract(points[pctr], points[pctr - 1])); //incoming line
-                                Vector2 vnorm2 = Vector2.Normalize(Vector2.Subtract(points[pctr + 1], points[pctr])); //outgoing line
-                                vnorm = Vector2.Normalize(new Vector2((vnorm1.X + vnorm2.X), (vnorm1.Y + vnorm2.Y)));
-                                float len = (_linewidth) / Vector2.Dot(vnorm1, vnorm);
-                                Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
-                                v1.Position = points[pctr] - vperp * (len);
-                                v2.Position = points[pctr] + vperp * (len);
-                            }
-
-                            //line end
-                            if (pctr + 1 == points.Length) {
-                                vnorm = Vector2.Normalize(Vector2.Subtract(points[pctr], points[pctr - 1]));
-                                Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
-                                v1.Position = points[pctr] - vperp * v1.Width;
-                                v2.Position = points[pctr] + vperp * v2.Width;
-                            }
-
-                             lineVertices.Insert(vCount + pctr * 2, v1);
-                            lineVertices.Insert(vCount + pctr * 2 + 1, v2);
-                        }
-                        vCount += points.Length * 2;
-                    }
-                    */
-
-                    /*
-                    if (Data.lines[l].type == lineType.CubicBezier) {
-                        //generate points
-                        Vector2[] points = new Vector2[400];
-                        Vector2 A = Data.lines[l].lineData[0];
-                        Vector2 B = Data.lines[l].lineData[1];
-                        Vector2 C = Data.lines[l].lineData[2];
-                        Vector2 D = Data.lines[l].lineData[3];
-
-                        for (int p = 0; p < 400; p++) {
-                            float t = ((float)p) / 400f;
-                            points[p] = (1f - t) * (1f - t) * (1f - t) * A + 3 * (1f - t) * (1f - t) * t * B + 3 * (1f - t) * t * t * C + t * t * t * D;
-                        }
-
-                        for (int pctr = 0; pctr < points.Length; pctr++) {
-                            LineVertex v1 = new LineVertex();
-                            v1.Width = _linewidth;
-                            v1.Edge = 0;
-                            v1.Color = new RgbaFloat(_drawColor.X, _drawColor.Y, _drawColor.Z, 1.0f);
-
-                            LineVertex v2 = new LineVertex();
-                            v2.Width = _linewidth;
-                            v2.Edge = 1;
-                            v2.Color = new RgbaFloat(_drawColor.X, _drawColor.Y, _drawColor.Z, 1.0f);
-
-                            Vector2 vnorm;
-                            //line start
-                            if (pctr == 0) {
-                                vnorm = Vector2.Normalize(Vector2.Subtract(points[pctr + 1], points[pctr]));
-                                Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
-                                v1.Position = points[pctr] - vperp * _linewidth;
-                                v2.Position = points[pctr] + vperp * _linewidth;
-                            }
-
-                            if (pctr > 0 && pctr + 1 < points.Length) {
-                                Vector2 vnorm1 = Vector2.Normalize(Vector2.Subtract(points[pctr], points[pctr - 1])); //incoming line
-                                Vector2 vnorm2 = Vector2.Normalize(Vector2.Subtract(points[pctr + 1], points[pctr])); //outgoing line
-                                vnorm = Vector2.Normalize(new Vector2((vnorm1.X + vnorm2.X), (vnorm1.Y + vnorm2.Y)));
-                                float len = _linewidth / Vector2.Dot(vnorm1, vnorm);
-                                Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
-                                v1.Position = points[pctr] - vperp * (len);
-                                v2.Position = points[pctr] + vperp * (len);
-                            }
-
-                            //line end
-                            if (pctr + 1 == points.Length) {
-                                vnorm = Vector2.Normalize(Vector2.Subtract(points[pctr], points[pctr - 1]));
-                                Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
-                                v1.Position = points[pctr] - vperp * _linewidth;
-                                v2.Position = points[pctr] + vperp * _linewidth;
-                            }
-
-                            lineVertices.Insert(vCount + pctr * 2, v1);
-                            lineVertices.Insert(vCount + pctr * 2 + 1, v2);
-                        }
-                        vCount += points.Length * 2;
-                    }
-                    */
                 }
 
                 _graphicsDevice.DisposeWhenIdle(_lineVertexBuffer);
@@ -808,6 +704,7 @@ namespace Designer {
                     }
                 }
             }
+
             if (_recreateGridLineVerticeArray) {
                 int vCount = 0;
                 int cCount = 0;
@@ -904,21 +801,11 @@ namespace Designer {
             uint vStart = 0;
             uint vLength = 0;
             for (int l = 0; l < Data.lines.Count; l++) {
-                // if (Data.lines[l].type == lineType.CubicBezier) {
-                //     vLength = (uint)Data.lines[l].lineData.Length * 2 * 100;
-                // }
-                // if (Data.lines[l].type == lineType.QuadraticBezier) {
-                //     // vLength = (uint)Data.lines[l].lineData.Length + 1;
-                //     vLength = 101*2;
-                // }
-
                 if (Data.lines[l].type == lineType.QuadraticBezier3D) {
-                    // vLength = (uint)Data.lines[l].lineData.Length + 1;
                     vLength = Data.lines[l].vCount;
                 }
 
                 if (Data.lines[l].type == lineType.Straight3D) {
-                    // vLength = (uint)Data.lines[l].points.Length * 2;
                     vLength = Data.lines[l].vCount;
                 }
                 _commandList.Draw(vertexCount: vLength, instanceCount: 1, vertexStart: vStart, instanceStart: 0);
@@ -943,7 +830,7 @@ namespace Designer {
         }
 
         private static void UpdateInput(InputSnapshot snapshot, float deltaSeconds) {
-            //handle input that is not used by ImGui
+            // Handle input that is not used by ImGui.
             if (!ImGui.GetIO().WantCaptureMouse) {
                 // if (snapshot.IsMouseDown(MouseButton.Left)) {
                 // } else {
