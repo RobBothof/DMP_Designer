@@ -20,6 +20,7 @@ namespace Designer
 
         public void Export(String path)
         {
+            Data.DebugConsole.Add("Exporting: " + path);
             // start new file
             // string path = "drawings/" + exportfilename + ".dri";
             // string path = exportfilename + ".dri";
@@ -81,11 +82,11 @@ namespace Designer
                 }
 
             }
-            Console.Write("\nWrote:");
+            Console.Write("\nExported:");
             Console.Write(instructioncount);
             Console.WriteLine(" drawinstructions");
 
-            Data.DebugConsole.Add("Wrote: " + instructioncount.ToString() + " drawinstructions");
+            Data.DebugConsole.Add("Exported: " + instructioncount.ToString() + " drawinstructions");
 
             using (FileStream fileStream = new FileStream(path, FileMode.Open))
             {
@@ -195,6 +196,7 @@ namespace Designer
                 Int64 controlSplitZ = (Int64)Math.Round((1 - t) * startZ + t * controlZ);
 
                 Console.WriteLine("\nSplitting Curve.");
+                Data.DebugConsole.Add("\nSplitting Curve.");
                 AddBezierSegment(startX, startY, startZ, controlSplitX, controlSplitY, controlSplitZ, endSplitX, endSplitY, endSplitZ);
 
                 // set up for next loop
@@ -210,19 +212,8 @@ namespace Designer
 
         void AddBezierSegment(Int64 startX, Int64 startY, Int64 startZ, Int64 controlX, Int64 controlY, Int64 controlZ, Int64 endX, Int64 endY, Int64 endZ)
         {
-            Console.Write("\nCalculating Curve: (");
-            Console.Write(startX);
-            Console.Write(" ,");
-            Console.Write(startY);
-            Console.Write(" ,");
-            Console.Write(startZ);
-            Console.Write(" ,");
-            Console.Write(endX);
-            Console.Write(" ,");
-            Console.Write(endY);
-            Console.Write(" ,");
-            Console.Write(endZ);
-            Console.WriteLine(")");
+            Console.WriteLine(String.Format("\nCalculating Curve: ({0}, {1}, {2}, {3}, {4}, {5}).", startX,startY,startZ,endX,endY,endZ));
+            Data.DebugConsole.Add(String.Format("\nCalculating Curve: ({0}, {1}, {2}, {3}, {4}, {5}).", startX,startY,startZ,endX,endY,endZ));
 
             //// We look at the 2D projections , determine which is the longest curve
             Int64 normalXZ = Math.Abs(startZ * (endX - controlX) + controlZ * (startX - endX) - endZ * (startX - controlX));
@@ -393,7 +384,7 @@ namespace Designer
 
                 if (x != endX || y != endY || z != endZ)
                 {
-                    Console.WriteLine("finishing curve");
+                    // Console.WriteLine("finishing curve");
 
                     deltaX = Math.Abs(endX - x);
                     deltaY = Math.Abs(endY - y);
@@ -434,9 +425,8 @@ namespace Designer
                     }
                 }
 
-                Console.Write("finished curve in ");
-                Console.Write(steps);
-                Console.WriteLine(" steps.");
+                Console.WriteLine(String.Format("Finished Curve in {0} steps.", steps));
+                Data.DebugConsole.Add(String.Format("Finished Curve in {0} steps.", steps));
 
                 d.index = index;
                 d.steps = steps;
@@ -449,19 +439,8 @@ namespace Designer
 
         void AddLine(Int64 startX, Int64 startY, Int64 startZ, Int64 endX, Int64 endY, Int64 endZ)
         {
-            Console.Write("\nCalculating Line: (");
-            Console.Write(startX);
-            Console.Write(" ,");
-            Console.Write(startY);
-            Console.Write(" ,");
-            Console.Write(startZ);
-            Console.Write(" ,");
-            Console.Write(endX);
-            Console.Write(" ,");
-            Console.Write(endY);
-            Console.Write(" ,");
-            Console.Write(endZ);
-            Console.WriteLine(")");
+            Console.WriteLine(String.Format("\nCalculating Line: ({0}, {1}, {2}, {3}, {4}, {5}).", startX,startY,startZ,endX,endY,endZ));
+            Data.DebugConsole.Add(String.Format("\nCalculating Line: ({0}, {1}, {2}, {3}, {4}, {5}).", startX,startY,startZ,endX,endY,endZ));
 
             Int64 deltaX = Math.Abs(endX - startX);
             int dirX = startX < endX ? 1 : -1;
@@ -543,24 +522,21 @@ namespace Designer
                 steps++;
             }
 
-            Console.Write("finished straight line in ");
-            Console.Write(steps);
-            Console.WriteLine(" steps.");
+            Console.WriteLine(String.Format("Finished Line in {0} steps.", steps));
+            Data.DebugConsole.Add(String.Format("Finished Line in {0} steps.", steps));
 
             d.index = index;
             d.steps = steps;
             DrawInstructions.Add(d);
 
             index++;
-
         }
 
         void SetPixel(Int64 x, Int64 y, Int64 z)
         {
-            
-            //Console.WriteLine(String.Format("({0}, {1}, {2})", x, y, z));
             if (Math.Abs(x - lastX) > 1 || Math.Abs(y - lastY) > 1|| Math.Abs(z - lastZ) > 1) {
                 Console.WriteLine(String.Format("Jump Occured! ({0}, {1} , {2}),({3}, {4}, {5})", lastX, lastY, lastZ, x, y, z));
+                Data.DebugConsole.Add(String.Format("Jump Occured! ({0}, {1} , {2}),({3}, {4}, {5})", lastX, lastY, lastZ, x, y, z));
             }
             lastX = x;
             lastY = y;

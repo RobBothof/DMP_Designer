@@ -18,7 +18,7 @@ public class Intersect1 : IGenerator {
 
         Data.lines.Insert(0,new Line());
         Data.lines[0].type=lineType.QuadraticBezier;
-        Data.lines[0].points = new Vector3[] {new Vector3(0,0,10000), new Vector3(40000,150000,0), new Vector3(80000,0,12000)};
+        Data.lines[0].points = new Vector3[] {new Vector3(0,0,10000), new Vector3(40000,500000,0), new Vector3(80000,0,12000)};
 
         // Data.lines.Insert(1,new Line());
         // Data.lines[1].type=lineType.QuadraticBezier3D;
