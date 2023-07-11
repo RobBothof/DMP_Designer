@@ -960,8 +960,8 @@ namespace Designer {
             }
 
             if (_showSettingsWindow) {
-                ImGui.SetNextWindowPos(new Vector2(_window.Width - 225f, 20f));
-                ImGui.SetNextWindowSize(new Vector2(225f, _window.Height - 30f));
+                ImGui.SetNextWindowPos(new Vector2(_window.Width - 275f, 20f));
+                ImGui.SetNextWindowSize(new Vector2(275f, _window.Height - 30f));
                 ImGui.Begin("Settings", ref _showSettingsWindow, ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoResize);
 
                 ImGui.PushStyleColor(ImGuiCol.Text, textcolor2);
@@ -981,7 +981,7 @@ namespace Designer {
 
                     ImGui.Text("Clear color:");
                     ImGui.SameLine();
-                    ImGui.Dummy(new Vector2(2, 0));
+                    ImGui.Dummy(new Vector2(52, 0));
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(130);
                     if (ImGui.ColorEdit3("##clearcol", ref _clearColor)) {
@@ -994,7 +994,7 @@ namespace Designer {
 
                     ImGui.Text("Draw color:");
                     ImGui.SameLine();
-                    ImGui.Dummy(new Vector2(3, 0));
+                    ImGui.Dummy(new Vector2(53, 0));
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(130);
                     if (ImGui.ColorEdit3("##drawcol", ref _drawColor)) {
@@ -1007,7 +1007,7 @@ namespace Designer {
 
                     ImGui.Text("Base width (mm):");
                     ImGui.SameLine();
-                    ImGui.Dummy(new Vector2(7, 0));
+                    ImGui.Dummy(new Vector2(15, 0));
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(130);
                     if (ImGui.DragFloat("##line", ref _linewidth, 0.1f, 0.0f, 70.0f)) {
@@ -1022,7 +1022,7 @@ namespace Designer {
 
                     ImGui.Text("Grid color:");
                     ImGui.SameLine();
-                    ImGui.Dummy(new Vector2(10, 0));
+                    ImGui.Dummy(new Vector2(60, 0));
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(130);
                     if (ImGui.SliderFloat("##gridcol", ref _gridIntensity, 0, 1)) {
@@ -1033,7 +1033,7 @@ namespace Designer {
 
                     ImGui.Text("Size (mm):");
                     ImGui.SameLine();
-                    ImGui.Dummy(new Vector2(8, 0));
+                    ImGui.Dummy(new Vector2(58, 0));
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(130);
                     if (ImGui.DragInt2("##drawsize", ref _drawSize[0], 1, 1, 1500)) {
@@ -1045,7 +1045,7 @@ namespace Designer {
 
                     ImGui.Text("Grid:");
                     ImGui.SameLine();
-                    ImGui.Dummy(new Vector2(46, 0));
+                    ImGui.Dummy(new Vector2(96, 0));
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(130);
                     if (ImGui.DragInt2("##gridsub", ref _gridSize[0], 1, 1, 1500)) {
@@ -1085,7 +1085,7 @@ namespace Designer {
 
                     ImGui.Text("Position (px) ");
                     ImGui.SameLine();
-                    ImGui.Dummy(new Vector2(16, 0));
+                    ImGui.Dummy(new Vector2(66, 0));
                     ImGui.SameLine();
                     ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 2f);
                     if (ImGui.Button("center", new Vector2(104, 20))) {
@@ -1098,7 +1098,7 @@ namespace Designer {
                     ImGui.PopStyleVar();
 
 
-                    ImGui.SetNextItemWidth(212.0f);
+                    ImGui.SetNextItemWidth(262.0f);
                     if (ImGui.DragFloat2("##_camPos", ref _cameraPosition)) {
                         _iniData["Camera"]["PosX"] = _cameraPosition.X.ToString();
                         _iniData["Camera"]["PosY"] = _cameraPosition.Y.ToString();
@@ -1107,14 +1107,14 @@ namespace Designer {
                     ImGui.Spacing();
                     ImGui.Spacing();
 
-                    ImGui.Text("Rotation              Zoom");
-                    ImGui.SetNextItemWidth(104.0f);
+                    ImGui.Text("Rotation                      Zoom");
+                    ImGui.SetNextItemWidth(129.0f);
                     if (ImGui.DragFloat("##_camRot", ref _cameraRotation)) {
                         _iniData["Camera"]["Rotation"] = _cameraRotation.ToString();
                         _iniParser.WriteFile("Configuration.ini", _iniData);
                     }
                     ImGui.SameLine();
-                    ImGui.SetNextItemWidth(104.0f);
+                    ImGui.SetNextItemWidth(129.0f);
                     if (ImGui.SliderInt("##_camZoom2", ref _zoom, 0, _zoomlevels.Count() - 1, _zoomlevels[_zoom].ToString() + "%%")) {
                         _iniData["Camera"]["Zoom"] = _zoom.ToString();
                         _iniParser.WriteFile("Configuration.ini", _iniData);
@@ -1152,7 +1152,7 @@ namespace Designer {
                     ImGui.Spacing();
                     ImGui.Text("Script");
                     ImGui.SameLine();
-                    ImGui.Dummy(new Vector2(62, 0));
+                    ImGui.Dummy(new Vector2(112, 0));
                     ImGui.SameLine();
                     ImGui.SameLine();
                     ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 2f);
@@ -1165,7 +1165,7 @@ namespace Designer {
                         ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
                         ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
                         ImGui.PushStyleColor(ImGuiCol.HeaderActive, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
-                        ImGui.PushItemWidth(210);
+                        ImGui.PushItemWidth(260);
                         if (ImGui.BeginCombo("##comboscriptfiles", scriptNames[_selectedScript].Split("scripts/")[1])) {
                             for (int n = 0; n < scriptNames.Count(); n++) {
                                 bool is_selected = (scriptNames[_selectedScript] == scriptNames[n]); // You can store your selection however you want, outside or inside your objects
@@ -1190,7 +1190,7 @@ namespace Designer {
 
                     ImGui.Spacing();
 
-                    ImGui.SetNextItemWidth(110);
+                    ImGui.SetNextItemWidth(160);
                     ImGui.DragInt("##RandomSeed", ref _seed);
                     ImGui.SameLine();
                     ImGui.Dummy(new Vector2(5f, 0f));
@@ -1201,7 +1201,7 @@ namespace Designer {
                     // ImGui.Dummy(new Vector2(0f, 10f));
 
                     ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 2f);
-                    if (ImGui.Button("compile and generate", new Vector2(210, 22))) {
+                    if (ImGui.Button("compile and generate", new Vector2(260, 22))) {
                         Generate();
                     }
                     ImGui.PopStyleVar();
@@ -1210,12 +1210,12 @@ namespace Designer {
                     ImGui.Text("File export");
 
                     ImGui.Spacing();
-                    ImGui.SetNextItemWidth(210f);
+                    ImGui.SetNextItemWidth(260f);
                     if (ImGui.InputText("##expfilepath", ref _exportfilepath, 80)) {
                         _iniData["Generator"]["FilePath"] = _exportfilepath;
                         _iniParser.WriteFile("Configuration.ini", _iniData);
                     };
-                    ImGui.SetNextItemWidth(210f);
+                    ImGui.SetNextItemWidth(260f);
                     if (ImGui.InputText("##expfilename", ref _exportfilename, 80)) {
                         _iniData["Generator"]["FileName"] = _exportfilename;
                         _iniParser.WriteFile("Configuration.ini", _iniData);
@@ -1256,7 +1256,7 @@ namespace Designer {
                         }
                     }
                     ImGui.SameLine();
-                    ImGui.Dummy(new Vector2(4, 0));
+                    ImGui.Dummy(new Vector2(54, 0));
                     ImGui.SameLine();
                     if (ImGui.Button("export file", new Vector2(100, 22))) {
                         if (_exportfilename.Length > 0) {
