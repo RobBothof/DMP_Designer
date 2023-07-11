@@ -40,8 +40,6 @@ namespace Designer
                 fileStream.Write(BitConverter.GetBytes(start));
                 fileStream.Write(BitConverter.GetBytes(size)); //lenghth of one instruction
             }
-            //
-
             Int64 instructioncount = 0;
             index = 0;
             dotIndex = 0;
@@ -82,11 +80,9 @@ namespace Designer
                 }
 
             }
-            Console.Write("\nExported:");
-            Console.Write(instructioncount);
-            Console.WriteLine(" drawinstructions");
 
-            Data.DebugConsole.Add("Exported: " + instructioncount.ToString() + " drawinstructions");
+            Console.WriteLine(String.Format("Exported: {0} drawinstructions.", instructioncount));
+            Data.DebugConsole.Add(String.Format("Exported: {0} drawinstructions.", instructioncount));
 
             using (FileStream fileStream = new FileStream(path, FileMode.Open))
             {
