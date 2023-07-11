@@ -21,16 +21,14 @@ namespace Designer {
         Straight = 1,
         QuadraticBezier = 2,
         CubicBezier = 3,
-        CatmullRom = 4,
-        QuadraticBezier3D=5,
-        Straight3D=6
+        CatmullRom = 4
     }
 
     public enum accelerationType : byte {
-        Continue = 0,
+        Single = 0,
         Start = 1,
-        Stop = 2,
-        Single = 3
+        Continue = 2,
+        Stop = 3
     }
 
     public struct DrawInstruction {
@@ -503,11 +501,11 @@ namespace Designer {
                     _seed = new Random().Next();
                 }
                 if (_compiler.CompileAndRun(scriptNames[_selectedScript], _seed) == 1) {
-                    Console.WriteLine("Scipt executed succesfully.");
-                    Data.DebugConsole.Add(("Scipt executed succesfully."));
+                    Console.WriteLine("Script executed succesfully.");
+                    Data.DebugConsole.Add(("Script executed succesfully."));
                 } else {
                     Console.WriteLine("Script execution failed..");
-                    Data.DebugConsole.Add(("Scipt execution failed.."));
+                    Data.DebugConsole.Add(("Script execution failed.."));
                 }
                 _recreateDotVerticeArray = true;
                 _recreateLineVerticeArray = true;
@@ -558,7 +556,7 @@ namespace Designer {
 
                     // Straight Lines
 
-                    if (Data.lines[l].type == lineType.Straight3D) {
+                    if (Data.lines[l].type == lineType.Straight) {
                         for (int ctr = 0; ctr < Data.lines[l].points.Length; ctr++) {
 
                             LineVertex v1 = new LineVertex();
@@ -608,7 +606,7 @@ namespace Designer {
 
                     // Curves
 
-                    if (Data.lines[l].type == lineType.QuadraticBezier3D) {
+                    if (Data.lines[l].type == lineType.QuadraticBezier) {
                         //generate points
                         Vector3 A = Data.lines[l].points[0];
                         Vector3 B = Data.lines[l].points[1];
@@ -799,11 +797,11 @@ namespace Designer {
             uint vStart = 0;
             uint vLength = 0;
             for (int l = 0; l < Data.lines.Count; l++) {
-                if (Data.lines[l].type == lineType.QuadraticBezier3D) {
+                if (Data.lines[l].type == lineType.QuadraticBezier) {
                     vLength = Data.lines[l].vCount;
                 }
 
-                if (Data.lines[l].type == lineType.Straight3D) {
+                if (Data.lines[l].type == lineType.Straight) {
                     vLength = Data.lines[l].vCount;
                 }
                 _commandList.Draw(vertexCount: vLength, instanceCount: 1, vertexStart: vStart, instanceStart: 0);
