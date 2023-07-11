@@ -18,7 +18,7 @@ public class Shapes_1 : IGenerator {
         for (int lineIndex=0;lineIndex<count;lineIndex++) {
             int dotIndex=0;
             Data.lines.Insert(lineIndex, new Line());
-            Data.lines[lineIndex].type=lineType.Straight;
+            Data.lines[lineIndex].type=LineType.Straight;
             List<Vector2> lineDots = new List<Vector2>();
             // Vector2 center = new Vector2((float) _rand.NextDouble()*600-300,(float) _rand.NextDouble()*600-300);
             Vector2 center = new Vector2((float)(lineIndex%3) * 500f - 500f,(float)(lineIndex/3) * 500f - 500f);

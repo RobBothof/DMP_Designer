@@ -16,7 +16,7 @@ using IniParser;
 
 namespace Designer {
 
-    public enum lineType : byte {
+    public enum LineType : byte {
         None = 0,
         Straight = 1,
         QuadraticBezier = 2,
@@ -24,7 +24,7 @@ namespace Designer {
         CatmullRom = 4
     }
 
-    public enum accelerationType : byte {
+    public enum Acceleration : byte {
         Single = 0,
         Start = 1,
         Continue = 2,
@@ -33,8 +33,8 @@ namespace Designer {
 
     public struct DrawInstruction {
         public UInt64 index;
-        public lineType type;
-        public accelerationType accelType;
+        public LineType type;
+        public Acceleration acceleration;
         public sbyte dirX;
         public sbyte dirY;
         public sbyte dirZ;
@@ -60,7 +60,7 @@ namespace Designer {
 
     public struct DrawInstruction2D {
         public UInt64 index;
-        public lineType type;
+        public LineType type;
         public sbyte dir_x;
         public sbyte dir_y;
         public Int64 x_start;
@@ -79,7 +79,8 @@ namespace Designer {
     public class Line {
         public Vector2[] lineData;
         public Vector3[] points;
-        public lineType type;
+        public LineType type = LineType.Straight;
+        public Acceleration acceleration = Acceleration.Single;
         public int layer;
         public uint vCount;
     }
@@ -556,7 +557,7 @@ namespace Designer {
 
                     // Straight Lines
 
-                    if (Data.lines[l].type == lineType.Straight) {
+                    if (Data.lines[l].type == LineType.Straight) {
                         for (int ctr = 0; ctr < Data.lines[l].points.Length; ctr++) {
 
                             LineVertex v1 = new LineVertex();
@@ -606,7 +607,7 @@ namespace Designer {
 
                     // Curves
 
-                    if (Data.lines[l].type == lineType.QuadraticBezier) {
+                    if (Data.lines[l].type == LineType.QuadraticBezier) {
                         //generate points
                         Vector3 A = Data.lines[l].points[0];
                         Vector3 B = Data.lines[l].points[1];
@@ -692,7 +693,7 @@ namespace Designer {
                         for (int ytile = 0; ytile < _gridSize[1]; ytile++) {
                             layer = (layer + 1) % 2;
                             Line l = new Line();
-                            l.type = lineType.Straight;
+                            l.type = LineType.Straight;
                             l.lineData = new Vector2[] { new Vector2(xtile * w, ytile * h), new Vector2(w, h) };
                             l.layer = layer;
                             Data.gridLines.Add(l);
@@ -707,7 +708,7 @@ namespace Designer {
                 List<LineVertex> gridLineVertices = new List<LineVertex>();
 
                 for (int l = 0; l < Data.gridLines.Count; l++) {
-                    if (Data.gridLines[l].type == lineType.Straight) {
+                    if (Data.gridLines[l].type == LineType.Straight) {
                         RgbaFloat c = new RgbaFloat(0, 0, 0, 0);
 
                         if (Data.gridLines[l].layer == 0) {
@@ -797,11 +798,11 @@ namespace Designer {
             uint vStart = 0;
             uint vLength = 0;
             for (int l = 0; l < Data.lines.Count; l++) {
-                if (Data.lines[l].type == lineType.QuadraticBezier) {
+                if (Data.lines[l].type == LineType.QuadraticBezier) {
                     vLength = Data.lines[l].vCount;
                 }
 
-                if (Data.lines[l].type == lineType.Straight) {
+                if (Data.lines[l].type == LineType.Straight) {
                     vLength = Data.lines[l].vCount;
                 }
                 _commandList.Draw(vertexCount: vLength, instanceCount: 1, vertexStart: vStart, instanceStart: 0);
@@ -817,7 +818,7 @@ namespace Designer {
             uint vStart = 0;
             uint vLength = 0;
             for (int l = 0; l < Data.gridLines.Count; l++) {
-                if (Data.gridLines[l].type == lineType.Straight) {
+                if (Data.gridLines[l].type == LineType.Straight) {
                     vLength = (uint)Data.gridLines[l].lineData.Length * 2;
                 }
                 _commandList.Draw(vertexCount: vLength, instanceCount: 1, vertexStart: vStart, instanceStart: 0);

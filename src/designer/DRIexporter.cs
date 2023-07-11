@@ -49,20 +49,22 @@ namespace Designer
             {
                 DrawInstructions.Clear();
 
-                if (l.type == lineType.QuadraticBezier)
+                if (l.type == LineType.QuadraticBezier)
                 {
                     AddBezier(
                         (Int64)l.points[0].X, (Int64)l.points[0].Y, (Int64)l.points[0].Z,
                         (Int64)l.points[1].X, (Int64)l.points[1].Y, (Int64)l.points[1].Z,
-                        (Int64)l.points[2].X, (Int64)l.points[2].Y, (Int64)l.points[2].Z
+                        (Int64)l.points[2].X, (Int64)l.points[2].Y, (Int64)l.points[2].Z,
+                        l.acceleration
                     );
                 }
 
-                if (l.type == lineType.Straight)
+                if (l.type == LineType.Straight)
                 {
                     AddLine(
                         (Int64)l.points[0].X, (Int64)l.points[0].Y, (Int64)l.points[0].Z,
-                        (Int64)l.points[1].X, (Int64)l.points[1].Y, (Int64)l.points[1].Z
+                        (Int64)l.points[1].X, (Int64)l.points[1].Y, (Int64)l.points[1].Z,
+                        l.acceleration
                     );
                 }
 
@@ -101,7 +103,7 @@ namespace Designer
             bytes.Add(0);
             bytes.Add((byte)d.type);
             bytes.Add(0);
-            bytes.Add((byte)d.accelType);
+            bytes.Add((byte)d.acceleration);
             bytes.Add(0);
             bytes.Add((byte)d.dirX);
             bytes.Add(0);
@@ -162,10 +164,13 @@ namespace Designer
             return bytes.ToArray();
         }
 
-        void AddBezier(Int64 startX, Int64 startY, Int64 startZ, Int64 controlX, Int64 controlY, Int64 controlZ, Int64 endX, Int64 endY, Int64 endZ)
+        void AddBezier(Int64 startX, Int64 startY, Int64 startZ, Int64 controlX, Int64 controlY, Int64 controlZ, Int64 endX, Int64 endY, Int64 endZ, Acceleration acceleration)
         {
-            for (var i = 1; i < 4; i++)
-            {                                           // split in max 4 segments 
+            Console.WriteLine(String.Format("\n*** Adding Curve: ({0}, {1}, {2}, {3}, {4}, {5}).", startX,startY,startZ,endX,endY,endZ));
+            Data.DebugConsole.Add(String.Format("\n*** Adding Curve: ({0}, {1}, {2}, {3}, {4}, {5}).", startX,startY,startZ,endX,endY,endZ));
+            int splits = 0;
+            for (splits = 0; splits < 3; splits++) // split in max 4 segments 
+            {                                           
                 Double t;
 
                 Double splitX = startX - 2 * controlX + endX;
@@ -193,8 +198,13 @@ namespace Designer
 
                 Console.WriteLine("\nSplitting Curve.");
                 Data.DebugConsole.Add("\nSplitting Curve.");
-                AddBezierSegment(startX, startY, startZ, controlSplitX, controlSplitY, controlSplitZ, endSplitX, endSplitY, endSplitZ);
 
+                if (splits==0) {
+                    if (acceleration == Acceleration.Single || acceleration == Acceleration.Start)
+                    AddBezierSegment(startX, startY, startZ, controlSplitX, controlSplitY, controlSplitZ, endSplitX, endSplitY, endSplitZ, Acceleration.Start);
+                } else {
+                    AddBezierSegment(startX, startY, startZ, controlSplitX, controlSplitY, controlSplitZ, endSplitX, endSplitY, endSplitZ, Acceleration.Continue);
+                }
                 // set up for next loop
                 startX = endSplitX;
                 startY = endSplitY;
@@ -203,13 +213,23 @@ namespace Designer
                 controlY = (Int64)Math.Round((1 - t) * controlY + t * endY);
                 controlZ = (Int64)Math.Round((1 - t) * controlZ + t * endZ);
             }
-            AddBezierSegment(startX, startY, startZ, controlX, controlY, controlZ, endX, endY, endZ);
+            if (splits==0) {
+                AddBezierSegment(startX, startY, startZ, controlX, controlY, controlZ, endX, endY, endZ, acceleration);
+            } else {
+                if (acceleration == Acceleration.Single || acceleration == Acceleration.Stop) {
+                    AddBezierSegment(startX, startY, startZ, controlX, controlY, controlZ, endX, endY, endZ, Acceleration.Stop);
+                }
+                else {
+                    AddBezierSegment(startX, startY, startZ, controlX, controlY, controlZ, endX, endY, endZ, Acceleration.Continue);
+
+                }
+            }
         }
 
-        void AddBezierSegment(Int64 startX, Int64 startY, Int64 startZ, Int64 controlX, Int64 controlY, Int64 controlZ, Int64 endX, Int64 endY, Int64 endZ)
+        void AddBezierSegment(Int64 startX, Int64 startY, Int64 startZ, Int64 controlX, Int64 controlY, Int64 controlZ, Int64 endX, Int64 endY, Int64 endZ, Acceleration acceleration)
         {
-            Console.WriteLine(String.Format("\nCalculating Curve: ({0}, {1}, {2}, {3}, {4}, {5}).", startX,startY,startZ,endX,endY,endZ));
-            Data.DebugConsole.Add(String.Format("\nCalculating Curve: ({0}, {1}, {2}, {3}, {4}, {5}).", startX,startY,startZ,endX,endY,endZ));
+            Console.WriteLine(String.Format("\nCalculating Curve: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}.", startX,startY,startZ,endX,endY,endZ,acceleration.ToString()));
+            Data.DebugConsole.Add(String.Format("\nCalculating Curve: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}", startX,startY,startZ,endX,endY,endZ,acceleration.ToString()));
 
             //// We look at the 2D projections , determine which is the longest curve
             Int64 normalXZ = Math.Abs(startZ * (endX - controlX) + controlZ * (startX - endX) - endZ * (startX - controlX));
@@ -253,9 +273,9 @@ namespace Designer
 
             if (cur == 0)
             { // no curve || straight line
-                if (projection == 1) AddLine(startX, startY, startZ, endX, endY, endZ);
-                if (projection == 2) AddLine(startX, startZ, startY, endX, endZ, endY);
-                if (projection == 3) AddLine(startZ, startY, startX, endZ, endY, endX);
+                if (projection == 1) AddLine(startX, startY, startZ, endX, endY, endZ, acceleration);
+                if (projection == 2) AddLine(startX, startZ, startY, endX, endZ, endY, acceleration);
+                if (projection == 3) AddLine(startZ, startY, startX, endZ, endY, endX, acceleration);
             }
             else
             {
@@ -303,8 +323,8 @@ namespace Designer
                 int dirZ = startZ < endZ ? 1 : -1;                          // z step direction
 
                 DrawInstruction d = new DrawInstruction();
-                d.type = lineType.QuadraticBezier;
-                d.accelType = 0;
+                d.type = LineType.QuadraticBezier;
+                d.acceleration = acceleration;
                 d.dirX = (sbyte)dirX;
                 d.dirY = (sbyte)dirY;
                 d.dirZ = (sbyte)dirZ;
@@ -433,10 +453,10 @@ namespace Designer
         }
 
 
-        void AddLine(Int64 startX, Int64 startY, Int64 startZ, Int64 endX, Int64 endY, Int64 endZ)
+        void AddLine(Int64 startX, Int64 startY, Int64 startZ, Int64 endX, Int64 endY, Int64 endZ, Acceleration acceleration)
         {
-            Console.WriteLine(String.Format("\nCalculating Line: ({0}, {1}, {2}, {3}, {4}, {5}).", startX,startY,startZ,endX,endY,endZ));
-            Data.DebugConsole.Add(String.Format("\nCalculating Line: ({0}, {1}, {2}, {3}, {4}, {5}).", startX,startY,startZ,endX,endY,endZ));
+            Console.WriteLine(String.Format("\nCalculating Line: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}.", startX,startY,startZ,endX,endY,endZ,acceleration.ToString()));
+            Data.DebugConsole.Add(String.Format("\nCalculating Line: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}", startX,startY,startZ,endX,endY,endZ,acceleration.ToString()));
 
             Int64 deltaX = Math.Abs(endX - startX);
             int dirX = startX < endX ? 1 : -1;
@@ -448,8 +468,8 @@ namespace Designer
             int dirZ = startZ < endZ ? 1 : -1;
 
             DrawInstruction d = new DrawInstruction();
-            d.type = lineType.Straight;
-            d.accelType = 0;
+            d.type = LineType.Straight;
+            d.acceleration = acceleration;
             d.dirX = (sbyte)dirX;
             d.dirY = (sbyte)dirY;
             d.dirZ = (sbyte)dirZ;

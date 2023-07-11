@@ -13,13 +13,13 @@ public class Thick2 : IGenerator {
         Data.dots.Clear();
 
         Data.lines.Insert(0,new Line());
-        Data.lines[0].type=lineType.QuadraticBezier;
-        // Data.lines[0].type=lineType.QuadraticBezier3D;
+        Data.lines[0].type=LineType.QuadraticBezier;
+        // Data.lines[0].type=LineType.QuadraticBezier3D;
         // Data.lines[0].lineData = new Vector2[] {new Vector2(1000,1000), new Vector2(250000,50000), new Vector2(500000,1000)};
         Data.lines[0].points = new Vector3[] {new Vector3(0,0,5000), new Vector3(450000,500000,5000), new Vector3(10000,1000000,5000)};
 
         // Data.lines.Insert(0,new Line());
-        // Data.lines[0].type=lineType.Straight3D;
+        // Data.lines[0].type=LineType.Straight3D;
         // Data.lines[0].lineData = new Vector2[] {new Vector2(1000,1000), new Vector2(250000,1000), new Vector2(500000,1000)};
         // Data.lines[0].points = new Vector3[] {new Vector3(0,0,0), new Vector3(200,100,20)};
 
@@ -76,7 +76,7 @@ public class Thick2 : IGenerator {
 
             //add one line connecting all dots
             // Line l = new Line();
-            // l.type=lineType.Straight;
+            // l.type=LineType.Straight;
             // l.lineData = lineDots.ToArray();
             // Data.lines.Add(l);
 
@@ -91,7 +91,7 @@ public class Thick2 : IGenerator {
                 Vector2 C = (lineDots[index1] + lineDots[index2])/2.0f; 
 
                 Line ql = new Line();
-                ql.type=lineType.QuadraticBezier;
+                ql.type=LineType.QuadraticBezier;
                 ql.lineData = new Vector2[] {A,B,C};
                 Data.lines.Add(ql);
             }

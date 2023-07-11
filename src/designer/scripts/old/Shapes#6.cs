@@ -46,7 +46,7 @@ public class Shapes_6 : IGenerator {
 
             //add one line connecting all dots
             // Line l = new Line();
-            // l.type=lineType.Straight;
+            // l.type=LineType.Straight;
             // l.lineData = lineDots.ToArray();
             // Data.lines.Add(l);
 
@@ -61,7 +61,7 @@ public class Shapes_6 : IGenerator {
                 Vector2 C = (lineDots[index1] + lineDots[index2])/2.0f; 
 
                 Line ql = new Line();
-                ql.type=lineType.QuadraticBezier;
+                ql.type=LineType.QuadraticBezier;
                 ql.lineData = new Vector2[] {A,B,C};
                 Data.lines.Add(ql);
             }
