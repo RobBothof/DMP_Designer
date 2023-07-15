@@ -561,12 +561,12 @@ namespace Designer {
                         for (int ctr = 0; ctr < Data.lines[l].points.Length; ctr++) {
 
                             LineVertex v1 = new LineVertex();
-                            v1.Width = _linewidth*(2560f / (R2 * MathF.PI)) + Data.lines[l].points[ctr].Z;
+                            v1.Width = _linewidth*(2560f / (R2 * MathF.PI)) + Data.lines[l].points[ctr].Z*0.1f;
                             v1.Edge = 0;
                             v1.Color = new RgbaFloat(_drawColor.X, _drawColor.Y, _drawColor.Z, 1.0f);
 
                             LineVertex v2 = new LineVertex();
-                            v2.Width = _linewidth*(2560f / (R2 * MathF.PI)) + Data.lines[l].points[ctr].Z;
+                            v2.Width = _linewidth*(2560f / (R2 * MathF.PI)) + Data.lines[l].points[ctr].Z*0.1f;
                             v2.Edge = 1;
                             v2.Color = new RgbaFloat(_drawColor.X, _drawColor.Y, _drawColor.Z, 1.0f);
 
@@ -620,12 +620,12 @@ namespace Designer {
                         }
                         for (int pctr = 0; pctr < points.Length; pctr++) {
                             LineVertex v1 = new LineVertex();
-                            v1.Width = points[pctr].Z + _linewidth*(2560f / (R2 * MathF.PI)) ;
+                            v1.Width = points[pctr].Z*0.1f+_linewidth*(2560f / (R2 * MathF.PI));
                             v1.Edge = 0;
                             v1.Color = new RgbaFloat(_drawColor.X, _drawColor.Y, _drawColor.Z, 1.0f);
 
                             LineVertex v2 = new LineVertex();
-                            v2.Width = points[pctr].Z + _linewidth*(2560f / (R2 * MathF.PI)) ;
+                            v2.Width = points[pctr].Z*0.1f + _linewidth*(2560f / (R2 * MathF.PI));
                             v2.Edge = 1;
                             v2.Color = new RgbaFloat(_drawColor.X, _drawColor.Y, _drawColor.Z, 1.0f);
 
@@ -637,8 +637,8 @@ namespace Designer {
                                 Vector2 nextpoint = new Vector2(points[pctr+1].X,points[pctr+1].Y);                                
                                 vnorm = Vector2.Normalize(Vector2.Subtract(nextpoint, point));
                                 Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
-                                v1.Position = point - vperp * (points[pctr].Z+_linewidth*(2560f / (R2 * MathF.PI)) );
-                                v2.Position = point + vperp * (points[pctr].Z+_linewidth*(2560f / (R2 * MathF.PI)) );
+                                v1.Position = point - vperp * v1.Width ;
+                                v2.Position = point + vperp * v2.Width ;
                             }
 
                             if (pctr > 0 && pctr + 1 < points.Length) {
@@ -647,7 +647,7 @@ namespace Designer {
                                 Vector2 vnorm1 = Vector2.Normalize(Vector2.Subtract(point, prevpoint)); //incoming line
                                 Vector2 vnorm2 = Vector2.Normalize(Vector2.Subtract(nextpoint, point)); //outgoing line
                                 vnorm = Vector2.Normalize(new Vector2((vnorm1.X + vnorm2.X), (vnorm1.Y + vnorm2.Y)));
-                                float len = (points[pctr].Z + _linewidth*(2560f / (R2 * MathF.PI)) ) / Vector2.Dot(vnorm1, vnorm);
+                                float len = v1.Width  / Vector2.Dot(vnorm1, vnorm);
                                 Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
                                 v1.Position = point- vperp * (len);
                                 v2.Position = point + vperp * (len);
@@ -658,8 +658,8 @@ namespace Designer {
                                 Vector2 prevpoint = new Vector2(points[pctr-1].X,points[pctr-1].Y);                                
                                 vnorm = Vector2.Normalize(Vector2.Subtract(point, prevpoint));
                                 Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
-                                v1.Position = point - vperp * (points[pctr].Z+_linewidth*(2560f / (R2 * MathF.PI)) );
-                                v2.Position = point + vperp * (points[pctr].Z+_linewidth*(2560f / (R2 * MathF.PI)) );
+                                v1.Position = point - vperp * v1.Width;
+                                v2.Position = point + vperp * v2.Width;
                             }
 
                             lineVertices.Insert(vCount + pctr * 2, v1);

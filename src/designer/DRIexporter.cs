@@ -441,8 +441,8 @@ namespace Designer
                     }
                 }
 
-                Console.WriteLine(String.Format("Finished Curve in {0} steps.", steps));
-                Data.DebugConsole.Add(String.Format("Finished Curve in {0} steps.", steps));
+                Console.WriteLine(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
+                Data.DebugConsole.Add(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
 
                 d.index = index;
                 d.steps = steps;
