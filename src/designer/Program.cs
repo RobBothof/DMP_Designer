@@ -50,10 +50,13 @@ namespace Designer {
         public Int64 deltaZ;
         public Int64 deltaXX;
         public Int64 deltaYY;
+        public Int64 deltaZZ;
         public Int64 deltaXY;
         public Int64 deltaXZ;
         public Int64 deltaYZ;
         public Int64 err;
+        public Int64 errX;
+        public Int64 errY;
         public Int64 errZ;
         public UInt64 steps;
     }
