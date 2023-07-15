@@ -172,8 +172,8 @@ namespace Designer
 
         void AddBezier(Int64 startX, Int64 startY, Int64 startZ, Int64 controlX, Int64 controlY, Int64 controlZ, Int64 endX, Int64 endY, Int64 endZ, Acceleration acceleration)
         {
-            Console.WriteLine(String.Format("\n*** Adding Curve: ({0}, {1}, {2}, {3}, {4}, {5}).", startX, startY, startZ, endX, endY, endZ));
-            Data.DebugConsole.Add(String.Format("\n*** Adding Curve: ({0}, {1}, {2}, {3}, {4}, {5}).", startX, startY, startZ, endX, endY, endZ));
+            // Console.WriteLine(String.Format("\n*** Adding Curve: ({0}, {1}, {2}, {3}, {4}, {5}).", startX, startY, startZ, endX, endY, endZ));
+            // Data.DebugConsole.Add(String.Format("\n*** Adding Curve: ({0}, {1}, {2}, {3}, {4}, {5}).", startX, startY, startZ, endX, endY, endZ));
             int splits = 0;
             for (splits = 0; splits < 3; splits++) // split in max 4 segments 
             {
@@ -202,8 +202,8 @@ namespace Designer
                 Int64 controlSplitY = (Int64)Math.Round((1 - t) * startY + t * controlY);
                 Int64 controlSplitZ = (Int64)Math.Round((1 - t) * startZ + t * controlZ);
 
-                Console.WriteLine("\nSplitting Curve.");
-                Data.DebugConsole.Add("\nSplitting Curve.");
+                // Console.WriteLine("\nSplitting Curve.");
+                // Data.DebugConsole.Add("\nSplitting Curve.");
 
                 if (splits == 0)
                 {
@@ -423,10 +423,10 @@ namespace Designer
                     }
 
                 }
-                
-                Console.WriteLine(String.Format("\nCalculated Curve: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}.", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
-                Console.WriteLine(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
-                Data.DebugConsole.Add(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
+
+                // Console.WriteLine(String.Format("\nCalculated Curve: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}.", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
+                // Console.WriteLine(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
+                // Data.DebugConsole.Add(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
 
                 d.index = index;
                 d.steps = steps;
@@ -620,9 +620,9 @@ namespace Designer
                     }
                 }
 
-                Console.WriteLine(String.Format("\nCalculated Curve: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}.", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
-                Console.WriteLine(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
-                Data.DebugConsole.Add(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
+                // Console.WriteLine(String.Format("\nCalculated Curve: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}.", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
+                // Console.WriteLine(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
+                // Data.DebugConsole.Add(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
 
                 d.index = index;
                 d.steps = steps;
@@ -813,9 +813,9 @@ namespace Designer
                         }
                     }
                 }
-                Console.WriteLine(String.Format("\nCalculated Curve: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}.", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
-                Console.WriteLine(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
-                Data.DebugConsole.Add(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
+                // Console.WriteLine(String.Format("\nCalculated Curve: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}.", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
+                // Console.WriteLine(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
+                // Data.DebugConsole.Add(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
 
                 d.index = index;
                 d.steps = steps;
@@ -827,8 +827,8 @@ namespace Designer
 
         void AddBezierSegment(Int64 startX, Int64 startY, Int64 startZ, Int64 controlX, Int64 controlY, Int64 controlZ, Int64 endX, Int64 endY, Int64 endZ, Acceleration acceleration)
         {
-            Console.WriteLine(String.Format("\nCalculating Curve: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}.", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
-            Data.DebugConsole.Add(String.Format("\nCalculating Curve: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
+            // Console.WriteLine(String.Format("\nCalculating Curve: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}.", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
+            // Data.DebugConsole.Add(String.Format("\nCalculating Curve: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
 
             //// We look at the 2D projections , determine which is the longest curve
             Int64 normalXZ = Math.Abs(startZ * (endX - controlX) + controlZ * (startX - endX) - endZ * (startX - controlX));
@@ -1044,9 +1044,9 @@ namespace Designer
                     }
                 }
 
-                Console.WriteLine(String.Format("\nCalculated Curve: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}.", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
-                Console.WriteLine(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
-                Data.DebugConsole.Add(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
+                // Console.WriteLine(String.Format("\nCalculated Curve: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}.", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
+                // Console.WriteLine(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
+                // Data.DebugConsole.Add(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
 
                 d.index = index;
                 d.steps = steps;
@@ -1059,8 +1059,8 @@ namespace Designer
 
         void AddLine(Int64 startX, Int64 startY, Int64 startZ, Int64 endX, Int64 endY, Int64 endZ, Acceleration acceleration)
         {
-            Console.WriteLine(String.Format("\nCalculating Line: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}.", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
-            Data.DebugConsole.Add(String.Format("\nCalculating Line: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
+            // Console.WriteLine(String.Format("\nCalculating Line: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}.", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
+            // Data.DebugConsole.Add(String.Format("\nCalculating Line: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
 
             Int64 deltaX = Math.Abs(endX - startX);
             int dirX = startX < endX ? 1 : -1;
@@ -1142,8 +1142,8 @@ namespace Designer
                 steps++;
             }
 
-            Console.WriteLine(String.Format("Finished Line in {0} steps.", steps));
-            Data.DebugConsole.Add(String.Format("Finished Line in {0} steps.", steps));
+            // Console.WriteLine(String.Format("Finished Line in {0} steps.", steps));
+            // Data.DebugConsole.Add(String.Format("Finished Line in {0} steps.", steps));
 
             d.index = index;
             d.steps = steps;
@@ -1159,19 +1159,30 @@ namespace Designer
                 Console.WriteLine(String.Format("Jump Occured! ({0}, {1} , {2}),({3}, {4}, {5})", lastX, lastY, lastZ, x, y, z));
                 Data.DebugConsole.Add(String.Format("Jump Occured! ({0}, {1} , {2}),({3}, {4}, {5})", lastX, lastY, lastZ, x, y, z));
             }
+            if (x < 0 || x > 800 * (5120 / (1.25)))  {
+                Console.WriteLine(String.Format("Warning: X out of bounds! ({0})", x));
+            }
+
+            if (y < 0 || y > 1200 * (5120 / (1.25)))  {
+                Console.WriteLine(String.Format("Warning: Y out of bounds! ({0})", y));
+            }
+
+            if (z < 0 || z > 65 * (5120 / (1.25)))  {
+                Console.WriteLine(String.Format("Warning: Y out of bounds! ({0})", z));
+            }
+
             lastX = x;
             lastY = y;
             lastZ = z;
-
-            /*
-            Dot dxy = new Dot();
-            dxy.layer = 0;
-            dxy.size = 0.025f * z;
-            dxy.color = Veldrid.RgbaFloat.Black;
-            dxy.position = new Vector2(x, y);
-            Data.dots.Add(dxy);
-            dotIndex++;
-            */
+            
+            // Dot dxy = new Dot();
+            // dxy.layer = 0;
+            // dxy.size = 0.05f * z + 500.0f;
+            // dxy.color = Veldrid.RgbaFloat.Black;
+            // dxy.position = new Vector2(x, y);
+            // Data.dots.Add(dxy);
+            // dotIndex++;
+            
         }
     }
 }
