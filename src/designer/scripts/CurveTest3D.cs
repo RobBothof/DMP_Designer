@@ -13,13 +13,23 @@ public class CurveTest3D : IGenerator {
         Data.dots.Clear();
         _rand = new Random(seed);
 
-        for (int i=2; i < 60; i++) {
-            float xStart = _rand.NextSingle()*  940000f+40000;
-            float xControl = _rand.NextSingle()*940000f+40000;
-            float xEnd = _rand.NextSingle()*940000f+40000;
-            float yStart = _rand.NextSingle()*1450000f+50000;
-            float yControl = _rand.NextSingle()*1450000f+50000;
-            float yEnd = _rand.NextSingle()*1450000f+50000;
+        for (int i=2; i < 30; i++) {
+            // float xStart = _rand.NextSingle()*  940000f+40000;
+            // float xControl = _rand.NextSingle()*940000f+40000;
+            // float xEnd = _rand.NextSingle()*940000f+40000;
+            // float yStart = _rand.NextSingle()*1450000f+50000;
+            // float yControl = _rand.NextSingle()*1450000f+50000;
+            // float yEnd = _rand.NextSingle()*1450000f+50000;
+            // float zStart = _rand.NextSingle()*40000f;
+            // float zControl = _rand.NextSingle()*40000f;
+            // float zEnd = _rand.NextSingle()*40000f;
+
+            float xStart = _rand.NextSingle()*  540000f+240000;
+            float xControl = _rand.NextSingle()*540000f+240000;
+            float xEnd = _rand.NextSingle()*540000f+240000;
+            float yStart = _rand.NextSingle()*650000f+450000;
+            float yControl = _rand.NextSingle()*650000f+450000;
+            float yEnd = _rand.NextSingle()*650000f+450000;
             float zStart = _rand.NextSingle()*40000f;
             float zControl = _rand.NextSingle()*40000f;
             float zEnd = _rand.NextSingle()*40000f;

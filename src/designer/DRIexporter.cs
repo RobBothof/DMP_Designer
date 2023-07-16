@@ -143,6 +143,8 @@ namespace Designer
             bytes.Add(0);
             bytes.AddRange(BitConverter.GetBytes(d.deltaYZ));
             bytes.Add(0);
+            bytes.AddRange(BitConverter.GetBytes(d.deltaMax));
+            bytes.Add(0);
             bytes.AddRange(BitConverter.GetBytes(d.err));
             bytes.Add(0);
             bytes.AddRange(BitConverter.GetBytes(d.errX));
@@ -172,8 +174,8 @@ namespace Designer
 
         void AddBezier(Int64 startX, Int64 startY, Int64 startZ, Int64 controlX, Int64 controlY, Int64 controlZ, Int64 endX, Int64 endY, Int64 endZ, Acceleration acceleration)
         {
-            // Console.WriteLine(String.Format("\n*** Adding Curve: ({0}, {1}, {2}, {3}, {4}, {5}).", startX, startY, startZ, endX, endY, endZ));
-            // Data.DebugConsole.Add(String.Format("\n*** Adding Curve: ({0}, {1}, {2}, {3}, {4}, {5}).", startX, startY, startZ, endX, endY, endZ));
+            Console.WriteLine(String.Format("\n*** Adding Curve: ({0}, {1}, {2}, {3}, {4}, {5}).", startX, startY, startZ, endX, endY, endZ));
+            Data.DebugConsole.Add(String.Format("\n*** Adding Curve: ({0}, {1}, {2}, {3}, {4}, {5}).", startX, startY, startZ, endX, endY, endZ));
             int splits = 0;
             for (splits = 0; splits < 3; splits++) // split in max 4 segments 
             {
@@ -202,13 +204,18 @@ namespace Designer
                 Int64 controlSplitY = (Int64)Math.Round((1 - t) * startY + t * controlY);
                 Int64 controlSplitZ = (Int64)Math.Round((1 - t) * startZ + t * controlZ);
 
-                // Console.WriteLine("\nSplitting Curve.");
-                // Data.DebugConsole.Add("\nSplitting Curve.");
+                Console.WriteLine("\nSplitting Curve.");
+                Data.DebugConsole.Add("\nSplitting Curve.");
 
                 if (splits == 0)
                 {
                     if (acceleration == Acceleration.Single || acceleration == Acceleration.Start)
+                    {
                         AddBezierSegment(startX, startY, startZ, controlSplitX, controlSplitY, controlSplitZ, endSplitX, endSplitY, endSplitZ, Acceleration.Start);
+                    } else 
+                    {
+                        AddBezierSegment(startX, startY, startZ, controlSplitX, controlSplitY, controlSplitZ, endSplitX, endSplitY, endSplitZ, Acceleration.Continue);
+                    }
                 }
                 else
                 {
@@ -238,10 +245,14 @@ namespace Designer
 
                 }
             }
+
+            // create a group list of drawinstructions add each segment
+            // when done set add steps together and set split indexes
+            // add to the export list.
         }
 
         // Projection = 1
-        void AddBezierSegmentXY(Int64 startX, Int64 startY, Int64 startZ, Int64 controlX, Int64 controlY, Int64 controlZ, Int64 endX, Int64 endY, Int64 endZ, Acceleration acceleration)
+        DrawInstruction AddBezierSegmentXY(Int64 startX, Int64 startY, Int64 startZ, Int64 controlX, Int64 controlY, Int64 controlZ, Int64 endX, Int64 endY, Int64 endZ, Acceleration acceleration)
         {
             uint projection = 1;
             Int64 err;
@@ -249,7 +260,7 @@ namespace Designer
 
             if (cur == 0)
             {
-                AddLine(startX, startY, startZ, endX, endY, endZ, acceleration);
+                return AddLine(startX, startY, startZ, endX, endY, endZ, acceleration);
             }
             else
             {
@@ -316,6 +327,7 @@ namespace Designer
                 d.deltaXY = deltaXY;
                 d.deltaXZ = deltaXZ;
                 d.deltaYZ = deltaYZ;
+                d.deltaMax = 0;
                 d.err = err;
                 d.errX = 0;
                 d.errY = 0;
@@ -425,19 +437,19 @@ namespace Designer
                 }
 
                 // Console.WriteLine(String.Format("\nCalculated Curve: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}.", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
-                // Console.WriteLine(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
-                // Data.DebugConsole.Add(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
+                Console.WriteLine(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
+                Data.DebugConsole.Add(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
 
                 d.index = index;
                 d.steps = steps;
                 DrawInstructions.Add(d);
-
                 index++;
+                return d;
             }
         }
 
         // Projection = 2
-        void AddBezierSegmentXZ(Int64 startX, Int64 startY, Int64 startZ, Int64 controlX, Int64 controlY, Int64 controlZ, Int64 endX, Int64 endY, Int64 endZ, Acceleration acceleration)
+        DrawInstruction AddBezierSegmentXZ(Int64 startX, Int64 startY, Int64 startZ, Int64 controlX, Int64 controlY, Int64 controlZ, Int64 endX, Int64 endY, Int64 endZ, Acceleration acceleration)
         {
             uint projection = 2; // swap y <-> z axis
             Int64 err;
@@ -445,7 +457,7 @@ namespace Designer
 
             if (cur == 0)
             {
-                AddLine(startX, startY, startZ, endX, endY, endZ, acceleration);
+                return AddLine(startX, startY, startZ, endX, endY, endZ, acceleration);
             }
             else
             {
@@ -513,6 +525,7 @@ namespace Designer
                 d.deltaXY = deltaXY;
                 d.deltaXZ = deltaXZ;
                 d.deltaYZ = deltaYZ;
+                d.deltaMax = 0;
                 d.err = err;
                 d.errX = 0;
                 d.errY = errY;
@@ -621,19 +634,20 @@ namespace Designer
                 }
 
                 // Console.WriteLine(String.Format("\nCalculated Curve: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}.", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
-                // Console.WriteLine(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
-                // Data.DebugConsole.Add(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
+                Console.WriteLine(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
+                Data.DebugConsole.Add(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
 
                 d.index = index;
                 d.steps = steps;
                 DrawInstructions.Add(d);
 
                 index++;
+                return d;
             }
         }
 
         // Projection = 3
-        void AddBezierSegmentYZ(Int64 startX, Int64 startY, Int64 startZ, Int64 controlX, Int64 controlY, Int64 controlZ, Int64 endX, Int64 endY, Int64 endZ, Acceleration acceleration)
+        DrawInstruction AddBezierSegmentYZ(Int64 startX, Int64 startY, Int64 startZ, Int64 controlX, Int64 controlY, Int64 controlZ, Int64 endX, Int64 endY, Int64 endZ, Acceleration acceleration)
         {
             uint projection = 3; // swap x <-> z axis
             Int64 err;
@@ -641,7 +655,7 @@ namespace Designer
 
             if (cur == 0)
             {
-                AddLine(startX, startY, startZ, endX, endY, endZ, acceleration);
+                return AddLine(startX, startY, startZ, endX, endY, endZ, acceleration);
             }
             else
             {
@@ -709,6 +723,7 @@ namespace Designer
                 d.deltaXY = deltaXY;
                 d.deltaXZ = deltaXZ;
                 d.deltaYZ = deltaYZ;
+                d.deltaMax = 0;
                 d.err = err;
                 d.errX = errX;
                 d.errY = 0;
@@ -814,21 +829,22 @@ namespace Designer
                     }
                 }
                 // Console.WriteLine(String.Format("\nCalculated Curve: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}.", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
-                // Console.WriteLine(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
-                // Data.DebugConsole.Add(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
+                Console.WriteLine(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
+                Data.DebugConsole.Add(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
 
                 d.index = index;
                 d.steps = steps;
                 DrawInstructions.Add(d);
 
                 index++;
+                return d;
             }
         }
 
-        void AddBezierSegment(Int64 startX, Int64 startY, Int64 startZ, Int64 controlX, Int64 controlY, Int64 controlZ, Int64 endX, Int64 endY, Int64 endZ, Acceleration acceleration)
+        DrawInstruction AddBezierSegment(Int64 startX, Int64 startY, Int64 startZ, Int64 controlX, Int64 controlY, Int64 controlZ, Int64 endX, Int64 endY, Int64 endZ, Acceleration acceleration)
         {
-            // Console.WriteLine(String.Format("\nCalculating Curve: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}.", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
-            // Data.DebugConsole.Add(String.Format("\nCalculating Curve: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
+            Console.WriteLine(String.Format("\nCalculating Curve: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}.", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
+            Data.DebugConsole.Add(String.Format("\nCalculating Curve: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
 
             //// We look at the 2D projections , determine which is the longest curve
             Int64 normalXZ = Math.Abs(startZ * (endX - controlX) + controlZ * (startX - endX) - endZ * (startX - controlX));
@@ -839,225 +855,14 @@ namespace Designer
             if (normalXZ > normalXY && normalXZ > normalYZ) projection = 2; // 3d plane orientation (xz)
             if (normalYZ > normalXY && normalYZ > normalXZ) projection = 3; // 3d plane orientation (zy)
 
-            if (projection == 1) AddBezierSegmentXY(startX, startY, startZ, controlX, controlY, controlZ, endX, endY, endZ, acceleration);
-            if (projection == 2) AddBezierSegmentXZ(startX, startY, startZ, controlX, controlY, controlZ, endX, endY, endZ, acceleration);
-            if (projection == 3) AddBezierSegmentYZ(startX, startY, startZ, controlX, controlY, controlZ, endX, endY, endZ, acceleration);
+            if (projection == 2) return AddBezierSegmentXZ(startX, startY, startZ, controlX, controlY, controlZ, endX, endY, endZ, acceleration);
+            if (projection == 3) return AddBezierSegmentYZ(startX, startY, startZ, controlX, controlY, controlZ, endX, endY, endZ, acceleration);
+            return AddBezierSegmentXY(startX, startY, startZ, controlX, controlY, controlZ, endX, endY, endZ, acceleration);
 
-            return;
-
-            if (projection == 2) // swap y <-> z axis
-            {
-                Int64 tstartZ = startZ;
-                Int64 tcontrolZ = controlZ;
-                Int64 tendZ = endZ;
-                startZ = startY;
-                controlZ = controlY;
-                endZ = endY;
-                startY = tstartZ;
-                controlY = tcontrolZ;
-                endY = tendZ;
-            }
-
-            if (projection == 3) // swap x <-> z axis
-            {
-                Int64 tstartZ = startZ;
-                Int64 tcontrolZ = controlZ;
-                Int64 tendZ = endZ;
-
-                startZ = startX;
-                controlZ = controlX;
-                endZ = endX;
-                startX = tstartZ;
-                controlX = tcontrolZ;
-                endX = tendZ;
-            }
-
-
-            Int64 err;
-            Int64 cur = (startX - controlX) * (endY - controlY) - (startY - controlY) * (endX - controlX);
-
-            if (cur == 0)
-            { // no curve || straight line
-                if (projection == 1) AddLine(startX, startY, startZ, endX, endY, endZ, acceleration);
-                if (projection == 2) AddLine(startX, startZ, startY, endX, endZ, endY, acceleration);
-                if (projection == 3) AddLine(startZ, startY, startX, endZ, endY, endX, acceleration);
-            }
-            else
-            {
-                int dirX = startX < endX ? 1 : -1;                              // x step direction 
-                int dirY = startY < endY ? 1 : -1;                              // y step direction 
-
-                Int64 deltaXX = (startX - controlX + endX - controlX) * dirX;
-                Int64 deltaYY = (startY - controlY + endY - controlY) * dirY;
-                Int64 deltaXY = 2 * deltaXX * deltaYY;
-
-                deltaXX *= deltaXX;
-                deltaYY *= deltaYY;                                                           // differences 2nd degree 
-
-                if (cur * dirX * dirY < 0)
-                {                                                    // negated curvature? 
-                    deltaXX = -deltaXX;
-                    deltaYY = -deltaYY;
-                    deltaXY = -deltaXY;
-                    cur = -cur;
-                }
-
-                Int64 deltaX = 4 * dirY * cur * (controlX - startX) + deltaXX - deltaXY;     // differences 1st degree
-                Int64 deltaY = 4 * dirX * cur * (startY - controlY) + deltaYY - deltaXY;
-                deltaXX += deltaXX;
-                deltaYY += deltaYY;
-                err = deltaX + deltaY + deltaXY;                                             // error 1st step */
-
-                Int64 deltaXZ, deltaYZ, errZ, deltaZ;
-                if (endZ != startZ)
-                {
-                    deltaXZ = Math.Abs((startY - controlY) * endZ + (endY - startY) * controlZ - (endY - controlY) * startZ);    // x part of surface normal 
-                    deltaYZ = Math.Abs((startX - controlX) * endZ + (endX - startX) * controlZ - (endX - controlX) * startZ);    // y part of surface normal 
-                    deltaZ = (deltaXZ * Math.Abs(endX - startX) + deltaYZ * Math.Abs(endY - startY)) / Math.Abs(endZ - startZ);
-                    errZ = deltaZ / 2;
-                }
-                else
-                {
-                    deltaXZ = 0;
-                    deltaYZ = 0;
-                    errZ = 0;
-                    deltaZ = 0;
-                }
-                int dirZ = startZ < endZ ? 1 : -1;                          // z step direction
-
-                DrawInstruction d = new DrawInstruction();
-                d.type = LineType.QuadraticBezier;
-                d.acceleration = acceleration;
-                d.dirX = (sbyte)dirX;
-                d.dirY = (sbyte)dirY;
-                d.dirZ = (sbyte)dirZ;
-                d.projection = (byte)projection;
-                d.startX = startX;
-                d.startY = startY;
-                d.startZ = startZ;
-                d.endX = endX;
-                d.endY = endY;
-                d.endZ = endZ;
-                d.deltaX = deltaX;
-                d.deltaY = deltaY;
-                d.deltaZ = deltaZ;
-                d.deltaXX = deltaXX;
-                d.deltaYY = deltaYY;
-                d.deltaXY = deltaXY;
-                d.deltaXZ = deltaXZ;
-                d.deltaYZ = deltaYZ;
-                d.err = err;
-                d.errZ = errZ;
-
-                /// Simulate Draw, to calculate number of steps needed for this instruction
-
-                Int64 x = startX;
-                Int64 y = startY;
-                Int64 z = startZ;
-                lastX = x;
-                lastY = y;
-                lastZ = z;
-
-                //we can skip this when actually plotting, as we are already at Start Position.
-                if (projection == 1) SetPixel(x, y, z);
-                if (projection == 2) SetPixel(x, z, y);
-                if (projection == 3) SetPixel(z, y, x);
-
-                UInt64 steps = 0;
-
-                while (x != endX && y != endY)
-                {
-                    bool stepX = 2 * err > deltaY;                              // test for x step 
-                    bool stepY = 2 * err < deltaX;                              // test for y step 
-
-                    if (stepX)
-                    {
-                        x += dirX;                                          // x step 
-                        deltaX -= deltaXY;
-                        deltaY += deltaYY;
-                        err += deltaY;
-                        errZ -= deltaXZ;
-                    }
-
-                    if (stepY)
-                    {
-                        y += dirY;                                          // y step 
-                        deltaY -= deltaXY;
-                        deltaX += deltaXX;
-                        err += deltaX;
-                        errZ -= deltaYZ;
-                    }
-
-                    if (errZ < 0)
-                    {
-                        errZ += deltaZ;
-                        z += dirZ;                                          // z step 
-                    }
-
-                    if (projection == 1) SetPixel(x, y, z);
-                    if (projection == 2) SetPixel(x, z, y);
-                    if (projection == 3) SetPixel(z, y, x);
-
-                    steps++;
-                }
-
-                if (x != endX || y != endY || z != endZ)
-                {
-                    // Console.WriteLine("finishing curve");
-
-                    deltaX = Math.Abs(endX - x);
-                    deltaY = Math.Abs(endY - y);
-                    deltaZ = Math.Abs(endZ - z);
-                    Int64 deltaMax = Math.Max(deltaZ, Math.Max(deltaX, deltaY));
-
-                    Int64 errX, errY;
-                    errX = errY = errZ = deltaMax / 2; ;
-
-                    for (Int64 i = deltaMax; i > 0; i--)
-                    {
-                        errX -= deltaX;
-                        if (errX < 0)
-                        {
-                            errX += deltaMax;
-                            x += dirX;                                      // x step
-                        }
-
-                        errY -= deltaY;
-                        if (errY < 0)
-                        {
-                            errY += deltaMax;
-                            y += dirY;                                      // y step
-                        }
-
-                        errZ -= deltaZ;
-                        if (errZ < 0)
-                        {
-                            errZ += deltaMax;
-                            z += dirZ;                                      // z step
-                        }
-
-                        steps++;
-
-                        if (projection == 1) SetPixel(x, y, z);
-                        if (projection == 2) SetPixel(x, z, y);
-                        if (projection == 3) SetPixel(z, y, x);
-                    }
-                }
-
-                // Console.WriteLine(String.Format("\nCalculated Curve: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}.", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
-                // Console.WriteLine(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
-                // Data.DebugConsole.Add(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
-
-                d.index = index;
-                d.steps = steps;
-                DrawInstructions.Add(d);
-
-                index++;
-            }
         }
 
 
-        void AddLine(Int64 startX, Int64 startY, Int64 startZ, Int64 endX, Int64 endY, Int64 endZ, Acceleration acceleration)
+        DrawInstruction AddLine(Int64 startX, Int64 startY, Int64 startZ, Int64 endX, Int64 endY, Int64 endZ, Acceleration acceleration)
         {
             // Console.WriteLine(String.Format("\nCalculating Line: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}.", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
             // Data.DebugConsole.Add(String.Format("\nCalculating Line: ({0}, {1}, {2}, {3}, {4}, {5}), with acceleration {6}", startX, startY, startZ, endX, endY, endZ, acceleration.ToString()));
@@ -1070,6 +875,12 @@ namespace Designer
 
             Int64 deltaZ = Math.Abs(endZ - startZ);
             int dirZ = startZ < endZ ? 1 : -1;
+
+            Int64 deltaMax = Math.Max(deltaZ, Math.Max(deltaX, deltaY));
+
+            Int64 errX = deltaMax / 2;
+            Int64 errY = deltaMax / 2;
+            Int64 errZ = deltaMax / 2;
 
             DrawInstruction d = new DrawInstruction();
             d.type = LineType.Straight;
@@ -1087,18 +898,18 @@ namespace Designer
             d.deltaX = deltaX;
             d.deltaY = deltaY;
             d.deltaZ = deltaZ;
+            d.deltaMax = deltaMax;
             d.deltaXX = 0;
             d.deltaYY = 0;
             d.deltaXY = 0;
             d.deltaXZ = 0;
             d.deltaYZ = 0;
             d.err = 0;
-            d.errZ = 0;
+            d.errX = errX;
+            d.errY = errY;
+            d.errZ = errZ;
 
             /// Simulate Draw, to calculate number of steps needed for this instruction
-
-
-            Int64 deltaMax = Math.Max(deltaZ, Math.Max(deltaX, deltaY));
 
             Int64 x = startX;
             Int64 y = startY;
@@ -1107,10 +918,6 @@ namespace Designer
             lastX = x;
             lastY = y;
             lastZ = z;
-
-            Int64 errX = deltaMax / 2;
-            Int64 errY = deltaMax / 2;
-            Int64 errZ = deltaMax / 2;
 
             SetPixel(x, y, z);
 
@@ -1150,6 +957,7 @@ namespace Designer
             DrawInstructions.Add(d);
 
             index++;
+            return d;
         }
 
         void SetPixel(Int64 x, Int64 y, Int64 z)

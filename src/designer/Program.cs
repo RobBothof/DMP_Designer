@@ -54,6 +54,7 @@ namespace Designer {
         public Int64 deltaXY;
         public Int64 deltaXZ;
         public Int64 deltaYZ;
+        public Int64 deltaMax;
         public Int64 err;
         public Int64 errX;
         public Int64 errY;
