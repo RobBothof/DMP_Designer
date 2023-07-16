@@ -21,7 +21,7 @@ public class Circles : IGenerator {
         float d1 = 250000f;
 
 
-        for (int i=2; i<52;i++) {
+        for (int i=2; i<3;i++) {
             center2 = new Vector3(_rand.NextSingle()*xmax+50000,_rand.NextSingle()*ymax+50000,_rand.NextSingle()*65000);
             
             if (center2.X > xmax/2f) {

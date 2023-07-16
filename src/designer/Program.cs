@@ -39,6 +39,8 @@ namespace Designer {
         public sbyte dirY;
         public sbyte dirZ;
         public byte projection;
+        public byte groupIndex;
+        public byte groupSize;
         public Int64 startX;
         public Int64 startY;
         public Int64 startZ;

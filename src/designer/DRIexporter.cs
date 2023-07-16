@@ -61,11 +61,14 @@ namespace Designer
 
                 if (l.type == LineType.Straight)
                 {
-                    AddLine(
-                        (Int64)l.points[0].X, (Int64)l.points[0].Y, (Int64)l.points[0].Z,
-                        (Int64)l.points[1].X, (Int64)l.points[1].Y, (Int64)l.points[1].Z,
-                        l.acceleration
+                    DrawInstructions.Add(
+                        AddLine(
+                            (Int64)l.points[0].X, (Int64)l.points[0].Y, (Int64)l.points[0].Z,
+                            (Int64)l.points[1].X, (Int64)l.points[1].Y, (Int64)l.points[1].Z,
+                            l.acceleration
+                        )
                     );
+                    index++;
                 }
 
                 //save all instructions in the list
@@ -112,6 +115,10 @@ namespace Designer
             bytes.Add((byte)d.dirZ);
             bytes.Add(0);
             bytes.Add((byte)d.projection);
+            bytes.Add(0);
+            bytes.Add((byte)d.groupIndex);
+            bytes.Add(0);
+            bytes.Add((byte)d.groupIndex);
             bytes.Add(0);
             bytes.AddRange(BitConverter.GetBytes(d.startX));
             bytes.Add(0);
@@ -174,6 +181,8 @@ namespace Designer
 
         void AddBezier(Int64 startX, Int64 startY, Int64 startZ, Int64 controlX, Int64 controlY, Int64 controlZ, Int64 endX, Int64 endY, Int64 endZ, Acceleration acceleration)
         {
+            List<DrawInstruction> dGroup = new List<DrawInstruction>();
+
             Console.WriteLine(String.Format("\n*** Adding Curve: ({0}, {1}, {2}, {3}, {4}, {5}).", startX, startY, startZ, endX, endY, endZ));
             Data.DebugConsole.Add(String.Format("\n*** Adding Curve: ({0}, {1}, {2}, {3}, {4}, {5}).", startX, startY, startZ, endX, endY, endZ));
             int splits = 0;
@@ -207,20 +216,8 @@ namespace Designer
                 Console.WriteLine("\nSplitting Curve.");
                 Data.DebugConsole.Add("\nSplitting Curve.");
 
-                if (splits == 0)
-                {
-                    if (acceleration == Acceleration.Single || acceleration == Acceleration.Start)
-                    {
-                        AddBezierSegment(startX, startY, startZ, controlSplitX, controlSplitY, controlSplitZ, endSplitX, endSplitY, endSplitZ, Acceleration.Start);
-                    } else 
-                    {
-                        AddBezierSegment(startX, startY, startZ, controlSplitX, controlSplitY, controlSplitZ, endSplitX, endSplitY, endSplitZ, Acceleration.Continue);
-                    }
-                }
-                else
-                {
-                    AddBezierSegment(startX, startY, startZ, controlSplitX, controlSplitY, controlSplitZ, endSplitX, endSplitY, endSplitZ, Acceleration.Continue);
-                }
+                dGroup.Add(AddBezierSegment(startX, startY, startZ, controlSplitX, controlSplitY, controlSplitZ, endSplitX, endSplitY, endSplitZ, acceleration));
+
                 // set up for next loop
                 startX = endSplitX;
                 startY = endSplitY;
@@ -229,23 +226,25 @@ namespace Designer
                 controlY = (Int64)Math.Round((1 - t) * controlY + t * endY);
                 controlZ = (Int64)Math.Round((1 - t) * controlZ + t * endZ);
             }
-            if (splits == 0)
-            {
-                AddBezierSegment(startX, startY, startZ, controlX, controlY, controlZ, endX, endY, endZ, acceleration);
-            }
-            else
-            {
-                if (acceleration == Acceleration.Single || acceleration == Acceleration.Stop)
-                {
-                    AddBezierSegment(startX, startY, startZ, controlX, controlY, controlZ, endX, endY, endZ, Acceleration.Stop);
-                }
-                else
-                {
-                    AddBezierSegment(startX, startY, startZ, controlX, controlY, controlZ, endX, endY, endZ, Acceleration.Continue);
 
-                }
-            }
+            dGroup.Add(AddBezierSegment(startX, startY, startZ, controlX, controlY, controlZ, endX, endY, endZ, acceleration));
 
+            UInt64 groupSteps=0;
+            int groupSize=dGroup.Count();
+            
+            foreach (DrawInstruction d in dGroup) {
+                groupSteps+=d.steps;
+            }
+            
+            for (int i=0; i < groupSize; i++) {
+                DrawInstruction d = dGroup[i];
+                d.groupIndex = (byte) i;
+                d.groupSize = (byte) groupSize;
+                d.steps = groupSteps;
+
+                DrawInstructions.Add(d);
+                index++;
+            }
             // create a group list of drawinstructions add each segment
             // when done set add steps together and set split indexes
             // add to the export list.
@@ -442,8 +441,8 @@ namespace Designer
 
                 d.index = index;
                 d.steps = steps;
-                DrawInstructions.Add(d);
-                index++;
+                // DrawInstructions.Add(d);
+                // index++;
                 return d;
             }
         }
@@ -639,9 +638,8 @@ namespace Designer
 
                 d.index = index;
                 d.steps = steps;
-                DrawInstructions.Add(d);
-
-                index++;
+                // DrawInstructions.Add(d);
+                // index++;
                 return d;
             }
         }
@@ -834,9 +832,8 @@ namespace Designer
 
                 d.index = index;
                 d.steps = steps;
-                DrawInstructions.Add(d);
-
-                index++;
+                // DrawInstructions.Add(d);
+                // index++;
                 return d;
             }
         }
@@ -908,6 +905,8 @@ namespace Designer
             d.errX = errX;
             d.errY = errY;
             d.errZ = errZ;
+            d.groupIndex=0;
+            d.groupSize=0;
 
             /// Simulate Draw, to calculate number of steps needed for this instruction
 
@@ -954,9 +953,8 @@ namespace Designer
 
             d.index = index;
             d.steps = steps;
-            DrawInstructions.Add(d);
-
-            index++;
+            // DrawInstructions.Add(d);
+            // index++;
             return d;
         }
 
