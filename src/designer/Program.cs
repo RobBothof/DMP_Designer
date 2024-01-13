@@ -14,7 +14,7 @@ using ImGuiNET;
 using IniParser.Model;
 using IniParser;
 
-using AssetPrimitives;
+// using AssetPrimitives;
 
 namespace Designer
 {
