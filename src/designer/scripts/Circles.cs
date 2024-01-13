@@ -13,16 +13,16 @@ public class Circles : IGenerator {
         Data.dots.Clear();
 
         _rand = new Random(seed);
-        float xmax=950000f;
-        float ymax=1450000f;
+        float xmax=1004000f;
+        float ymax=1506000;
         float cxmax=0f;
         float cymax=0f;
-        Vector3 center2 = new Vector3(550000,750000,0);
+        Vector3 center2 = new Vector3(502000,753000,0);
         float d1 = 250000f;
 
 
-        for (int i=2; i<3;i++) {
-            center2 = new Vector3(_rand.NextSingle()*xmax+50000,_rand.NextSingle()*ymax+50000,_rand.NextSingle()*65000);
+        for (int i=2; i<250;i++) {
+            center2 = new Vector3(_rand.NextSingle()*(xmax-100000)+50000,_rand.NextSingle()*(ymax-100000)+50000,0);
             
             if (center2.X > xmax/2f) {
                 cxmax = xmax - center2.X;
@@ -36,7 +36,7 @@ public class Circles : IGenerator {
                 cymax=center2.Y;
             }
 
-            d1 = MathF.Min(cxmax,cymax)*(0.4f+_rand.NextSingle()*0.4f);
+            d1 = MathF.Min(cxmax,cymax)*(0.2f+_rand.NextSingle()*0.2f);
 
             float d2 = d1 * 1.084f;
             Vector3 P1  = center2+Vector3.Transform(new Vector3(0,d1,0),Quaternion.CreateFromAxisAngle(Vector3.UnitZ,(MathF.PI*0.0f)));

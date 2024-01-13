@@ -18,8 +18,8 @@ public class LineTest3D : IGenerator {
             float xEnd = _rand.NextSingle()*1000000f;
             float yStart = i*25000f;
             float yEnd = i*25000f;
-            float zStart = _rand.NextSingle()*30000f;
-            float zEnd = _rand.NextSingle()*30000f;
+            float zStart = _rand.NextSingle()*25000f;
+            float zEnd = _rand.NextSingle()*25000f;
 
             Line l = new Line();
             l.type=LineType.Straight;

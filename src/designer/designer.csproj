@@ -20,6 +20,7 @@
     <PackageReference Include="Veldrid.StartupUtilities" Version="4.8.0" />
     <PackageReference Include="Veldrid.Spirv" Version="1.0.14" />
     <PackageReference Include="Veldrid.Utilities" Version="4.8.0" />
+    <PackageReference Include="MathNet.Numerics" Version="5.0.0" /> 
   </ItemGroup>
   
 </Project>

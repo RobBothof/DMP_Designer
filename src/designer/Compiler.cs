@@ -35,6 +35,10 @@ namespace Designer {
             var myClass = syntaxTree.GetRoot().DescendantNodes().OfType<ClassDeclarationSyntax>().Last();
             var myClassSymbol = model.GetDeclaredSymbol(myClass) as ISymbol;
             String className = myClassSymbol.Name;
+            var namespaceSymbol = myClassSymbol.ContainingNamespace;
+            if (namespaceSymbol != null) {
+                className = namespaceSymbol.Name + "." + className;
+            }
 
             using (MemoryStream ms = new MemoryStream()) {
                 EmitResult result = compilation.Emit(ms);

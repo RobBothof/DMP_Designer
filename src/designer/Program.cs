@@ -10,13 +10,17 @@ using Veldrid.StartupUtilities;
 using Veldrid.Utilities;
 using System.Text;
 using ImGuiNET;
-using System.IO.Ports;
+// using System.IO.Ports;
 using IniParser.Model;
 using IniParser;
 
-namespace Designer {
+using AssetPrimitives;
 
-    public enum LineType : byte {
+namespace Designer
+{
+
+    public enum LineType : byte
+    {
         None = 0,
         Straight = 1,
         QuadraticBezier = 2,
@@ -24,14 +28,16 @@ namespace Designer {
         CatmullRom = 4
     }
 
-    public enum Acceleration : byte {
+    public enum Acceleration : byte
+    {
         Single = 0,
         Start = 1,
         Continue = 2,
         Stop = 3
     }
 
-    public struct DrawInstruction {
+    public struct DrawInstruction
+    {
         public UInt64 index;
         public LineType type;
         public Acceleration acceleration;
@@ -64,25 +70,26 @@ namespace Designer {
         public UInt64 steps;
     }
 
-    public struct DrawInstruction2D {
-        public UInt64 index;
-        public LineType type;
-        public sbyte dir_x;
-        public sbyte dir_y;
-        public Int64 x_start;
-        public Int64 y_start;
-        public Int64 x_end;
-        public Int64 y_end;
-        public Int64 delta_x;
-        public Int64 delta_y;
-        public Int64 delta_xx;
-        public Int64 delta_yy;
-        public Int64 delta_xy;
-        public Int64 err;
-        public Int64 steps;
-    }
+    // public struct DrawInstruction2D {
+    //     public UInt64 index;
+    //     public LineType type;
+    //     public sbyte dir_x;
+    //     public sbyte dir_y;
+    //     public Int64 x_start;
+    //     public Int64 y_start;
+    //     public Int64 x_end;
+    //     public Int64 y_end;
+    //     public Int64 delta_x;
+    //     public Int64 delta_y;
+    //     public Int64 delta_xx;
+    //     public Int64 delta_yy;
+    //     public Int64 delta_xy;
+    //     public Int64 err;
+    //     public Int64 steps;
+    // }
 
-    public class Line {
+    public class Line
+    {
         public Vector2[] lineData;
         public Vector3[] points;
         public LineType type = LineType.Straight;
@@ -91,28 +98,34 @@ namespace Designer {
         public uint vCount;
     }
 
-    public class Dot {
+    public class Dot
+    {
         public Vector2 position;
         public RgbaFloat color;
         public float size;
         public int layer;
     }
 
-    public static class Data {
+    public static class Data
+    {
+        public const int stepsPerMM = 1280;
         public static List<Line> lines = new List<Line>();
         public static List<Dot> dots = new List<Dot>();
         public static List<String> DebugConsole = new List<string>();
         public static List<Line> gridLines = new List<Line>();
+        public static UInt16[] depthMap = new UInt16[2*8*stepsPerMM*2*12*stepsPerMM]; // 20480 x 30720        
     }
 
-    struct DotVertex {
+    struct DotVertex
+    {
         public Vector2 Position;
         public RgbaFloat Color;
         public Vector2 UV;
         public float Layer;
     }
 
-    struct LineVertex {
+    struct LineVertex
+    {
         public Vector2 Position;
         public RgbaFloat Color;
         public float Edge;
@@ -120,13 +133,21 @@ namespace Designer {
         public float Layer;
     }
 
-    public interface IGenerator {
+    struct DepthVertex
+    {
+        public Vector2 Position;
+        public Vector2 TexCoords;
+        public float Alpha;
+    }
+
+    public interface IGenerator
+    {
         void Generate(int seed);
     }
 
-    public static class Program {
-        private static float R2 = 1.25f; // diameter (r*2) of the wheel on motor
-
+    public static class Program
+    {
+        // private static float R2 = 1.25f; // diameter (r*2) of the wheel on motor
         private static Sdl2Window _window;
         private static GraphicsDevice _graphicsDevice;
         private static CommandList _commandList;
@@ -138,49 +159,57 @@ namespace Designer {
         private static DeviceBuffer _translationBuffer;
         private static ResourceSet _viewportResourceSet;
 
+        // preview of DepthBuffer
+        private static Texture _depthTexture;
+        private static TextureView _depthTextureView;
+        private static ResourceSet _depthTextureSet;
+
+        private static DeviceBuffer _depthVertexBuffer;
+        private static Shader[] _depthShaders;
+        private static Pipeline _depthPipeline;
+        private static bool _recreateDepthVerticeArray = true;
+
+        private static float _depthIntensity = 0.5f;
+
+
         // drawtype: Line
         private static DeviceBuffer _lineVertexBuffer;
         private static Shader[] _lineShaders;
         private static Pipeline _linePipeline;
-        // private static ResourceSet  _lineResourceSet;        
         private static bool _recreateLineVerticeArray = true;
 
         // drawtype: Dot
         private static DeviceBuffer _dotVertexBuffer;
         private static Shader[] _dotShaders;
         private static Pipeline _dotPipeline;
-        // private static ResourceSet  _dotResourceSet;
         private static bool _recreateDotVerticeArray = true;
 
         // drawtype: GridLine
         private static DeviceBuffer _gridLineVertexBuffer;
         private static Shader[] _gridLineShaders;
         private static Pipeline _gridLinePipeline;
-        // private static ResourceSet  _gridLineResourceSet;        
         private static bool _recreateGridLineVerticeArray = true;
 
-        // private static SerialPort _serialPort;
-        private static String[] serialPortNames;
-        private static int _selectedSerialPort = 0;
-        private static int[] baudrates = { 300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 38400, 57600, 115200, 128000, 256000 };
-        private static int _selectedSerialBaudrate = 10;
+        //
 
         private static ImGuiRenderer _imGuiRenderer;
         private static String[] scriptNames;
         private static int _selectedScript;
 
-        private static int[] _drawSize = { 1, 1 };
+        public  static int[] _drawSize = { 1, 1 };
         private static int[] _gridSize = { 1, 1 };
-        private static Vector3 _gridColor = new Vector3(0.3f, 0.6f, 0.4f);
         private static float _gridIntensity = 0.5f;
         private static float _gridlinewidth = 100f;
+
+        private static Vector3 _borderColor = new Vector3(0.0f, 0.0f, 1.0f);
+        private static float _borderWidth = 50f;
 
         private static Vector3 _clearColor = new Vector3(0.0f, 0.0f, 0.0f);
         private static Vector3 _drawColor = new Vector3(0.3f, 0.6f, 0.4f);
         private static Vector2 _cameraPosition = new Vector2(0.0f, 0.0f);
         private static int _zoom = 13;
-        private static float[] _zoomlevels = { 1f, 1.5f, 2f, 3.33f, 5f, 6.25f, 8.33f, 12.5f, 16.67f, 25f, 33.33f, 50f, 66.67f, 100f, 150f, 200f, 300f, 400f, 600f, 800f, 1000f, 2000f, 4000f, 6000f, 8000f, 12000f, 16000f, 24000f, 32000f,64000f,128000f };
-        private static float _linewidth = 3f;
+        private static float[] _zoomlevels = { 1f, 1.5f, 2f, 3.33f, 5f, 6.25f, 8.33f, 12.5f, 16.67f, 25f, 33.33f, 50f, 66.67f, 100f, 150f, 200f, 300f, 400f, 600f, 800f, 1000f, 2000f, 4000f, 6000f, 8000f, 12000f, 16000f, 24000f, 32000f, 64000f, 128000f };
+        private static float _linewidth = 10f;
         private static float _cameraRotation = 0.0f;
 
         // UI state
@@ -207,11 +236,13 @@ namespace Designer {
         private static string _exportfilepath = "/home/robber/DrawMachineProject/drawings/";
         private static string _exportfilename = "";
 
-        public static void AddNewQuadraticBezier(int i) {
+        public static void AddNewQuadraticBezier(int i)
+        {
             // Console.WriteLine(i.ToString());
         }
 
-        static void Main(string[] args) {
+        static void Main(string[] args)
+        {
             _compiler = new CodeCompiler();
             _exporter = new DriExporter();
 
@@ -233,9 +264,16 @@ namespace Designer {
             if (_iniData["DrawColor"]["R"] != null) _drawColor.X = float.Parse(_iniData["DrawColor"]["R"]);
             if (_iniData["DrawColor"]["G"] != null) _drawColor.Y = float.Parse(_iniData["DrawColor"]["G"]);
             if (_iniData["DrawColor"]["B"] != null) _drawColor.Z = float.Parse(_iniData["DrawColor"]["B"]);
+
             if (_iniData["ClearColor"]["R"] != null) _clearColor.X = float.Parse(_iniData["ClearColor"]["R"]);
             if (_iniData["ClearColor"]["G"] != null) _clearColor.Y = float.Parse(_iniData["ClearColor"]["G"]);
             if (_iniData["ClearColor"]["B"] != null) _clearColor.Z = float.Parse(_iniData["ClearColor"]["B"]);
+
+            if (_iniData["BorderColor"]["R"] != null) _borderColor.X = float.Parse(_iniData["BorderColor"]["R"]);
+            if (_iniData["BorderColor"]["G"] != null) _borderColor.Y = float.Parse(_iniData["BorderColor"]["G"]);
+            if (_iniData["BorderColor"]["B"] != null) _borderColor.Z = float.Parse(_iniData["BorderColor"]["B"]);
+
+            if (_iniData["Border"]["Width"] != null) _borderWidth = float.Parse(_iniData["Border"]["Width"]);
 
             if (_iniData["Line"]["Width"] != null) _linewidth = float.Parse(_iniData["Line"]["Width"]);
 
@@ -247,10 +285,15 @@ namespace Designer {
             if (_iniData["Grid"]["LineWidth"] != null) _gridlinewidth = float.Parse(_iniData["Grid"]["LineWidth"]);
             if (_iniData["Grid"]["Intensity"] != null) _gridIntensity = float.Parse(_iniData["Grid"]["Intensity"]);
 
+            if (_iniData["Depth"]["Intensity"] != null) _depthIntensity = float.Parse(_iniData["Depth"]["Intensity"]);
+
             if (_iniData["Generator"]["FilePath"] != null) _exportfilepath = _iniData["Generator"]["FilePath"];
             if (_iniData["Generator"]["FileName"] != null) _exportfilename = _iniData["Generator"]["FileName"];
+            if (_iniData["Generator"]["Seed"] != null) _seed = int.Parse(_iniData["Generator"]["Seed"]);
+            if (_iniData["Generator"]["UseSeed"] != null) _useRandomSeed = bool.Parse(_iniData["Generator"]["UseSeed"]);
+      
             //get list of serialports
-            serialPortNames = SerialPort.GetPortNames();
+            // serialPortNames = SerialPort.GetPortNames();
 
             //get a list of script files
             scriptNames = Directory.GetFiles("scripts", "*.cs");
@@ -272,7 +315,8 @@ namespace Designer {
             //create Graphics Device
             _graphicsDevice = VeldridStartup.CreateGraphicsDevice(
                 _window,
-                new GraphicsDeviceOptions {
+                new GraphicsDeviceOptions
+                {
                     SwapchainDepthFormat = PixelFormat.R32_Float,
                     ResourceBindingModel = ResourceBindingModel.Improved,
                     PreferStandardClipSpaceYDirection = true,
@@ -283,7 +327,8 @@ namespace Designer {
                 GraphicsBackend.Vulkan
             );
 
-            _window.Resized += () => {
+            _window.Resized += () =>
+            {
                 _graphicsDevice.MainSwapchain.Resize((uint)_window.Width, (uint)_window.Height);
             };
 
@@ -309,7 +354,6 @@ namespace Designer {
                     new ResourceLayoutElementDescription("TranslationBuffer", ResourceKind.UniformBuffer, ShaderStages.Vertex)
             ));
             _viewportResourceSet = factory.CreateResourceSet(new ResourceSetDescription(viewportResourceLayout, _projectionBuffer, _cameraBuffer, _rotationBuffer, _translationBuffer));
-
 
             //// ------------------- Lines ------------------------- ////
 
@@ -401,6 +445,48 @@ namespace Designer {
             gridLinePipelineDescription.ResourceLayouts = new[] { viewportResourceLayout };
             _gridLinePipeline = factory.CreateGraphicsPipeline(gridLinePipelineDescription);
 
+            //// ------------------- DepthBuffer ------------------------- ////
+
+            //create a vertex buffer
+            _depthVertexBuffer = factory.CreateBuffer(new BufferDescription(0 * 20, BufferUsage.VertexBuffer));
+            _graphicsDevice.UpdateBuffer(_depthVertexBuffer, 0, new LineVertex[0]);
+
+            //describe the data layout
+            VertexLayoutDescription depthVertexBufferLayout = new VertexLayoutDescription(
+                new VertexElementDescription("Position", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2),
+                new VertexElementDescription("TexCoords", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2),
+                new VertexElementDescription("Alpha", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float1)
+            );
+            //load Shaders
+            _depthShaders = factory.CreateFromSpirv(new ShaderDescription(ShaderStages.Vertex, File.ReadAllBytes("Shaders/depth_shader-vert.glsl"), "main"), new ShaderDescription(ShaderStages.Fragment, File.ReadAllBytes("Shaders/depth_shader-frag.glsl"), "main"));
+            _depthTexture = factory.CreateTexture(TextureDescription.Texture2D((uint) (2*8*Data.stepsPerMM), (uint) (2*12*Data.stepsPerMM), 1, 1, PixelFormat.R16_UNorm, TextureUsage.Sampled));
+            _depthTextureView = factory.CreateTextureView(_depthTexture);
+
+            // Array.Clear(Data.depthMap,0,Data.depthMap.Length);
+            Array.Fill(Data.depthMap,UInt16.MaxValue);
+
+            _graphicsDevice.UpdateTexture<UInt16>(_depthTexture, Data.depthMap, 0, 0, 0, (uint) (2*8*Data.stepsPerMM), (uint) (2*12*Data.stepsPerMM), 1, 0, 0);
+
+            ResourceLayout worldTextureLayout = factory.CreateResourceLayout(new ResourceLayoutDescription(
+                    new ResourceLayoutElementDescription("SurfaceTexture", ResourceKind.TextureReadOnly, ShaderStages.Fragment),
+                    new ResourceLayoutElementDescription("SurfaceSampler", ResourceKind.Sampler, ShaderStages.Fragment)
+            ));
+
+            _depthTextureSet = factory.CreateResourceSet(new ResourceSetDescription(worldTextureLayout, _depthTextureView, _graphicsDevice.PointSampler));
+
+            //describe graphics pipeline
+            GraphicsPipelineDescription depthPipelineDescription = new GraphicsPipelineDescription();
+            depthPipelineDescription.Outputs = _graphicsDevice.MainSwapchain.Framebuffer.OutputDescription;
+            depthPipelineDescription.BlendState = BlendStateDescription.SingleAlphaBlend;
+            depthPipelineDescription.DepthStencilState = new DepthStencilStateDescription(depthTestEnabled: true, depthWriteEnabled: true, comparisonKind: ComparisonKind.LessEqual);
+            depthPipelineDescription.RasterizerState = new RasterizerStateDescription(cullMode: FaceCullMode.Back, fillMode: PolygonFillMode.Solid, frontFace: FrontFace.Clockwise, depthClipEnabled: true, scissorTestEnabled: true);
+            depthPipelineDescription.PrimitiveTopology = PrimitiveTopology.TriangleStrip;
+            depthPipelineDescription.ShaderSet = new ShaderSetDescription(vertexLayouts: new VertexLayoutDescription[] { depthVertexBufferLayout }, shaders: _depthShaders);
+
+            //add resource sets: general viewport and optional rendertype specific
+            depthPipelineDescription.ResourceLayouts = new[] { viewportResourceLayout, worldTextureLayout };
+            _depthPipeline = factory.CreateGraphicsPipeline(depthPipelineDescription);
+
             //// ------------------- Init ------------------------- ////
 
             // Create the commandlist, to record and execute graphics commands.
@@ -413,9 +499,11 @@ namespace Designer {
             double previousTime = sw.Elapsed.TotalSeconds;
 
             //// ------------------- RENDERING LOOP ------------------------- ////
-            while (_window.Exists) {
+            while (_window.Exists)
+            {
                 InputSnapshot snapshot = _window.PumpEvents();
-                if (_window.Exists) {
+                if (_window.Exists)
+                {
                     double newTime = sw.Elapsed.TotalSeconds;
                     float deltaSeconds = (float)(newTime - previousTime);
 
@@ -439,20 +527,28 @@ namespace Designer {
 
                     // Create view matrix and projection matrix.
                     // _commandList.UpdateBuffer(_projectionBuffer, 0, Matrix4x4.CreateOrthographic(_window.Width * 100f / _zoomlevels[_zoom], _window.Height * 100f / _zoomlevels[_zoom], 0.1f, 10000f));
-                    _commandList.UpdateBuffer(_projectionBuffer, 0, Matrix4x4.CreateOrthographic(_window.Width * (51200f / (R2 * MathF.PI)) / _zoomlevels[_zoom], _window.Height * (51200f / (R2 * MathF.PI)) / _zoomlevels[_zoom], 0.1f, 50000f));
+
+                    // _commandList.UpdateBuffer(_projectionBuffer, 0, Matrix4x4.CreateOrthographic(_window.Width * (51200f / (k * MathF.PI)) / _zoomlevels[_zoom], _window.Height * (51200f / (R2 * MathF.PI)) / _zoomlevels[_zoom], 0.1f, 50000f));
+                    // _commandList.UpdateBuffer(_cameraBuffer, 0, Matrix4x4.CreateLookAt(new Vector3(_cameraPosition.X, _cameraPosition.Y, 1000), new Vector3(_cameraPosition.X, _cameraPosition.Y, 0f), Vector3.UnitY));
+                    // _commandList.UpdateBuffer(_rotationBuffer, 0, Matrix4x4.CreateFromAxisAngle(Vector3.UnitZ, _cameraRotation * 0.01745329252f));
+                    // _commandList.UpdateBuffer(_translationBuffer, 0, new Vector4(_drawSize[0] * (2560f / (R2 * MathF.PI)), _drawSize[1] * (2560f / (R2 * MathF.PI)), 0, 1));
+
+                    _commandList.UpdateBuffer(_projectionBuffer, 0, Matrix4x4.CreateOrthographic(_window.Width * (Data.stepsPerMM * 10f) / _zoomlevels[_zoom], _window.Height * (Data.stepsPerMM * 10f) / _zoomlevels[_zoom], 0.1f, 50000f));
                     _commandList.UpdateBuffer(_cameraBuffer, 0, Matrix4x4.CreateLookAt(new Vector3(_cameraPosition.X, _cameraPosition.Y, 1000), new Vector3(_cameraPosition.X, _cameraPosition.Y, 0f), Vector3.UnitY));
                     _commandList.UpdateBuffer(_rotationBuffer, 0, Matrix4x4.CreateFromAxisAngle(Vector3.UnitZ, _cameraRotation * 0.01745329252f));
-                    _commandList.UpdateBuffer(_translationBuffer, 0, new Vector4(_drawSize[0] * (2560f / (R2 * MathF.PI)), _drawSize[1] * (2560f / (R2 * MathF.PI)), 0, 1));
+                    _commandList.UpdateBuffer(_translationBuffer, 0, new Vector4(_drawSize[0] * (Data.stepsPerMM * 0.5f), _drawSize[1] * (Data.stepsPerMM * 0.5f), 0, 1));
+
 
                     // Update geometry if needed and draw
                     UpdateGridLineGeometry();
                     UpdateLineGeometry();
                     UpdateDotGeometry();
+                    UpdateDepthGeometry();
 
                     DrawGridLines();
+                    DrawDepthBuffer();
                     DrawLines();
                     DrawDots();
-
 
                     //// Draw UI
                     _imGuiRenderer.Draw(_commandList);
@@ -471,21 +567,34 @@ namespace Designer {
             // Clean up.
             _linePipeline.Dispose();
             _lineVertexBuffer.Dispose();
-            foreach (Shader shader in _lineShaders) {
+            foreach (Shader shader in _lineShaders)
+            {
                 shader.Dispose();
             }
 
             _dotPipeline.Dispose();
             _dotVertexBuffer.Dispose();
-            foreach (Shader shader in _dotShaders) {
+            foreach (Shader shader in _dotShaders)
+            {
                 shader.Dispose();
             }
 
             _gridLinePipeline.Dispose();
             _gridLineVertexBuffer.Dispose();
-            foreach (Shader shader in _gridLineShaders) {
+            foreach (Shader shader in _gridLineShaders)
+            {
                 shader.Dispose();
             }
+
+            _depthTexture.Dispose();
+            _depthTextureView.Dispose();
+            _depthPipeline.Dispose();
+            _depthVertexBuffer.Dispose();
+            foreach (Shader shader in _depthShaders)
+            {
+                shader.Dispose();
+            }
+
             _cameraBuffer.Dispose();
             _projectionBuffer.Dispose();
             _rotationBuffer.Dispose();
@@ -496,33 +605,46 @@ namespace Designer {
             _graphicsDevice.Dispose();
         }
 
-        private static void Export(string s) {
+        private static void Export(string s)
+        {
             _exporter.Export(s);
             _recreateDotVerticeArray = true;
         }
 
-        private static void Generate() {
-            if (File.Exists(scriptNames[_selectedScript])) {
+        private static void Generate()
+        {
+            if (File.Exists(scriptNames[_selectedScript]))
+            {
                 // Conpile and run script
-                if (!_useRandomSeed) {
+                if (!_useRandomSeed)
+                {
                     _seed = new Random().Next();
+                    _iniData["Generator"]["Seed"] = _seed.ToString();
+                    _iniParser.WriteFile("Configuration.ini", _iniData);                    
                 }
-                if (_compiler.CompileAndRun(scriptNames[_selectedScript], _seed) == 1) {
+                if (_compiler.CompileAndRun(scriptNames[_selectedScript], _seed) == 1)
+                {
                     Console.WriteLine("Script executed succesfully.");
                     Data.DebugConsole.Add(("Script executed succesfully."));
-                } else {
+                }
+                else
+                {
                     Console.WriteLine("Script execution failed..");
                     Data.DebugConsole.Add(("Script execution failed.."));
                 }
                 _recreateDotVerticeArray = true;
                 _recreateLineVerticeArray = true;
+                _recreateDepthVerticeArray = true;
             }
         }
 
-        private static void UpdateDotGeometry() {
-            if (_recreateDotVerticeArray) {
+        private static void UpdateDotGeometry()
+        {
+            if (_recreateDotVerticeArray)
+            {
                 DotVertex[] dotVertices = new DotVertex[Data.dots.Count * 4];
-                for (int d = 0; d < Data.dots.Count; d++) {
+                for (int d = 0; d < Data.dots.Count; d++)
+                {
                     dotVertices[d * 4 + 0] = new DotVertex();
                     dotVertices[d * 4 + 0].Position = new Vector2(Data.dots[d].position.X - Data.dots[d].size, Data.dots[d].position.Y + Data.dots[d].size);
                     dotVertices[d * 4 + 0].Color = Data.dots[d].color;
@@ -554,38 +676,45 @@ namespace Designer {
             }
         }
 
-        private static void UpdateLineGeometry() {
-            if (_recreateLineVerticeArray) {
+        private static void UpdateLineGeometry()
+        {
+            if (_recreateLineVerticeArray)
+            {
                 int vCount = 0;
                 List<LineVertex> lineVertices = new List<LineVertex>();
 
-                for (int l = 0; l < Data.lines.Count; l++) {
+                for (int l = 0; l < Data.lines.Count; l++)
+                {
 
                     // Straight Lines
 
-                    if (Data.lines[l].type == LineType.Straight) {
-                        for (int ctr = 0; ctr < Data.lines[l].points.Length; ctr++) {
+                    if (Data.lines[l].type == LineType.Straight)
+                    {
+                        for (int ctr = 0; ctr < Data.lines[l].points.Length; ctr++)
+                        {
 
                             LineVertex v1 = new LineVertex();
-                            v1.Width = _linewidth*(2560f / (R2 * MathF.PI)) + Data.lines[l].points[ctr].Z*0.1f;
+                            v1.Width = _linewidth * Data.stepsPerMM * 0.5f + Data.lines[l].points[ctr].Z * 0.35f;
                             v1.Edge = 0;
                             v1.Color = new RgbaFloat(_drawColor.X, _drawColor.Y, _drawColor.Z, 1.0f);
 
                             LineVertex v2 = new LineVertex();
-                            v2.Width = _linewidth*(2560f / (R2 * MathF.PI)) + Data.lines[l].points[ctr].Z*0.1f;
+                            v2.Width = _linewidth * Data.stepsPerMM * 0.5f + Data.lines[l].points[ctr].Z * 0.35f;
                             v2.Edge = 1;
                             v2.Color = new RgbaFloat(_drawColor.X, _drawColor.Y, _drawColor.Z, 1.0f);
 
                             Vector2 vnorm;
 
-                            if (ctr == 0) {
+                            if (ctr == 0)
+                            {
                                 vnorm = Vector2.Normalize(Vector2.Subtract(Data.lines[l].points[ctr + 1].XY(), Data.lines[l].points[ctr].XY()));
                                 Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
                                 v1.Position = Data.lines[l].points[ctr].XY() - vperp * v1.Width;
                                 v2.Position = Data.lines[l].points[ctr].XY() + vperp * v2.Width;
                             }
 
-                            if (ctr > 0 && ctr + 1 < Data.lines[l].points.Length) {
+                            if (ctr > 0 && ctr + 1 < Data.lines[l].points.Length)
+                            {
                                 Vector2 vnorm1 = Vector2.Normalize(Vector2.Subtract(Data.lines[l].points[ctr].XY(), Data.lines[l].points[ctr - 1].XY())); //incoming line
                                 Vector2 vnorm2 = Vector2.Normalize(Vector2.Subtract(Data.lines[l].points[ctr + 1].XY(), Data.lines[l].points[ctr].XY())); //outgoing line
                                 vnorm = Vector2.Normalize(new Vector2((vnorm1.X + vnorm2.X), (vnorm1.Y + vnorm2.Y)));
@@ -596,7 +725,8 @@ namespace Designer {
                             }
 
                             //line end
-                            if (ctr + 1 == Data.lines[l].points.Length) {
+                            if (ctr + 1 == Data.lines[l].points.Length)
+                            {
                                 vnorm = Vector2.Normalize(Vector2.Subtract(Data.lines[l].points[ctr].XY(), Data.lines[l].points[ctr - 1].XY()));
                                 Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
                                 v1.Position = Data.lines[l].points[ctr].XY() - vperp * v1.Width;
@@ -607,61 +737,67 @@ namespace Designer {
                             lineVertices.Insert(vCount + ctr * 2 + 1, v2);
 
                         }
-                        Data.lines[l].vCount = (uint) Data.lines[l].points.Length * 2;                        
+                        Data.lines[l].vCount = (uint)Data.lines[l].points.Length * 2;
                         vCount += Data.lines[l].points.Length * 2;
                     }
 
                     // Curves
 
-                    if (Data.lines[l].type == LineType.QuadraticBezier) {
+                    if (Data.lines[l].type == LineType.QuadraticBezier)
+                    {
                         //generate points
                         Vector3 A = Data.lines[l].points[0];
                         Vector3 B = Data.lines[l].points[1];
                         Vector3 C = Data.lines[l].points[2];
                         Vector3[] points = new Vector3[101];
 
-                        for (int p = 0; p <= 100; p++) {
+                        for (int p = 0; p <= 100; p++)
+                        {
                             float t = ((float)p) / 100;
                             points[p] = (1f - t) * (1f - t) * A + 2 * (1f - t) * t * B + t * t * C;
                         }
-                        for (int pctr = 0; pctr < points.Length; pctr++) {
+                        for (int pctr = 0; pctr < points.Length; pctr++)
+                        {
                             LineVertex v1 = new LineVertex();
-                            v1.Width = points[pctr].Z*0.1f+_linewidth*(2560f / (R2 * MathF.PI));
+                            v1.Width = points[pctr].Z * 0.35f + _linewidth * Data.stepsPerMM * 0.5f;
                             v1.Edge = 0;
                             v1.Color = new RgbaFloat(_drawColor.X, _drawColor.Y, _drawColor.Z, 1.0f);
 
                             LineVertex v2 = new LineVertex();
-                            v2.Width = points[pctr].Z*0.1f + _linewidth*(2560f / (R2 * MathF.PI));
+                            v2.Width = points[pctr].Z * 0.35f + _linewidth * Data.stepsPerMM * 0.5f;
                             v2.Edge = 1;
                             v2.Color = new RgbaFloat(_drawColor.X, _drawColor.Y, _drawColor.Z, 1.0f);
 
-                            Vector2 point = new Vector2(points[pctr].X,points[pctr].Y);
+                            Vector2 point = new Vector2(points[pctr].X, points[pctr].Y);
 
                             Vector2 vnorm;
                             //line start
-                            if (pctr == 0) {
-                                Vector2 nextpoint = new Vector2(points[pctr+1].X,points[pctr+1].Y);                                
+                            if (pctr == 0)
+                            {
+                                Vector2 nextpoint = new Vector2(points[pctr + 1].X, points[pctr + 1].Y);
                                 vnorm = Vector2.Normalize(Vector2.Subtract(nextpoint, point));
                                 Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
-                                v1.Position = point - vperp * v1.Width ;
-                                v2.Position = point + vperp * v2.Width ;
+                                v1.Position = point - vperp * v1.Width;
+                                v2.Position = point + vperp * v2.Width;
                             }
 
-                            if (pctr > 0 && pctr + 1 < points.Length) {
-                                Vector2 nextpoint = new Vector2(points[pctr+1].X,points[pctr+1].Y);                                
-                                Vector2 prevpoint = new Vector2(points[pctr-1].X,points[pctr-1].Y);                                
+                            if (pctr > 0 && pctr + 1 < points.Length)
+                            {
+                                Vector2 nextpoint = new Vector2(points[pctr + 1].X, points[pctr + 1].Y);
+                                Vector2 prevpoint = new Vector2(points[pctr - 1].X, points[pctr - 1].Y);
                                 Vector2 vnorm1 = Vector2.Normalize(Vector2.Subtract(point, prevpoint)); //incoming line
                                 Vector2 vnorm2 = Vector2.Normalize(Vector2.Subtract(nextpoint, point)); //outgoing line
                                 vnorm = Vector2.Normalize(new Vector2((vnorm1.X + vnorm2.X), (vnorm1.Y + vnorm2.Y)));
-                                float len = v1.Width  / Vector2.Dot(vnorm1, vnorm);
+                                float len = v1.Width / Vector2.Dot(vnorm1, vnorm);
                                 Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
-                                v1.Position = point- vperp * (len);
+                                v1.Position = point - vperp * (len);
                                 v2.Position = point + vperp * (len);
                             }
 
                             //line end
-                            if (pctr + 1 == points.Length) {
-                                Vector2 prevpoint = new Vector2(points[pctr-1].X,points[pctr-1].Y);                                
+                            if (pctr + 1 == points.Length)
+                            {
+                                Vector2 prevpoint = new Vector2(points[pctr - 1].X, points[pctr - 1].Y);
                                 vnorm = Vector2.Normalize(Vector2.Subtract(point, prevpoint));
                                 Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
                                 v1.Position = point - vperp * v1.Width;
@@ -672,7 +808,7 @@ namespace Designer {
                             lineVertices.Insert(vCount + pctr * 2 + 1, v2);
 
                         }
-                        Data.lines[l].vCount = (uint) points.Length * 2;
+                        Data.lines[l].vCount = (uint)points.Length * 2;
                         vCount += points.Length * 2;
                     }
                 }
@@ -685,18 +821,62 @@ namespace Designer {
             }
         }
 
-        private static void UpdateGridLineGeometry() {
+        private static void UpdateDepthGeometry()
+        {
+            if (_recreateDepthVerticeArray)
+            {
+                RgbaFloat c = new RgbaFloat(1, 0, 0, 1);
+
+                DepthVertex dv;
+                DepthVertex[] depthVertices = new DepthVertex[4];
+
+                dv = new DepthVertex();
+                dv.TexCoords = new Vector2(0.0f, 0.0f);
+                dv.Position = new Vector2(0, 0);
+                dv.Alpha = _depthIntensity;
+                depthVertices[0] = dv;
+
+                dv = new DepthVertex();
+                dv.TexCoords = new Vector2(0.0f, 1.0f);
+                dv.Position = new Vector2(0, _drawSize[1] * Data.stepsPerMM);
+                dv.Alpha = _depthIntensity;                
+                depthVertices[1] = dv;
+
+                dv = new DepthVertex();
+                dv.TexCoords = new Vector2(1.0f, 0.0f);
+                dv.Position = new Vector2(_drawSize[0] * Data.stepsPerMM, 0);
+                dv.Alpha = _depthIntensity;
+                depthVertices[2] = dv;
+
+                dv = new DepthVertex();
+                dv.TexCoords = new Vector2(1.0f, 1.0f);
+                dv.Position = new Vector2(_drawSize[0] * Data.stepsPerMM, _drawSize[1] * Data.stepsPerMM);
+                dv.Alpha = _depthIntensity;
+                depthVertices[3] = dv;
+
+                _depthVertexBuffer = _graphicsDevice.ResourceFactory.CreateBuffer(new BufferDescription(4 * 20, BufferUsage.VertexBuffer));
+                _graphicsDevice.UpdateBuffer(_depthVertexBuffer, 0, depthVertices.ToArray());
+
+                _graphicsDevice.UpdateTexture<UInt16>(_depthTexture, Data.depthMap, 0, 0, 0, (uint)(2*8*Data.stepsPerMM), (uint) (2*12*Data.stepsPerMM), 1, 0, 0);
+                _recreateDepthVerticeArray=false;
+            }
+        }
+        private static void UpdateGridLineGeometry()
+        {
             {
                 Data.gridLines.Clear();
                 int layer = 0;
                 int lastlayer = 0;
-                if (_gridSize[0] > 0 && _gridSize[1] > 0) {
-                    int w = (_drawSize[0] / _gridSize[0]) * (int) (5120f / (R2 * MathF.PI));
-                    int h = (_drawSize[1] / _gridSize[1]) * (int) (5120f / (R2 * MathF.PI));
-                    for (int xtile = 0; xtile < _gridSize[0]; xtile++) {
+                if (_gridSize[0] > 0 && _gridSize[1] > 0)
+                {
+                    int w = (_drawSize[0] / _gridSize[0]) * Data.stepsPerMM;
+                    int h = (_drawSize[1] / _gridSize[1]) * Data.stepsPerMM;
+                    for (int xtile = 0; xtile < _gridSize[0]; xtile++)
+                    {
                         if (lastlayer == layer) layer = (layer + 1) % 2;
                         lastlayer = layer;
-                        for (int ytile = 0; ytile < _gridSize[1]; ytile++) {
+                        for (int ytile = 0; ytile < _gridSize[1]; ytile++)
+                        {
                             layer = (layer + 1) % 2;
                             Line l = new Line();
                             l.type = LineType.Straight;
@@ -708,16 +888,20 @@ namespace Designer {
                 }
             }
 
-            if (_recreateGridLineVerticeArray) {
+            if (_recreateGridLineVerticeArray)
+            {
                 int vCount = 0;
-                int cCount = 0;
+                // int cCount = 0;
                 List<LineVertex> gridLineVertices = new List<LineVertex>();
 
-                for (int l = 0; l < Data.gridLines.Count; l++) {
-                    if (Data.gridLines[l].type == LineType.Straight) {
+                for (int l = 0; l < Data.gridLines.Count; l++)
+                {
+                    if (Data.gridLines[l].type == LineType.Straight)
+                    {
                         RgbaFloat c = new RgbaFloat(0, 0, 0, 0);
 
-                        if (Data.gridLines[l].layer == 0) {
+                        if (Data.gridLines[l].layer == 0)
+                        {
                             float r = 0f, g = 0f, b = 0f;
                             if (_clearColor.X > 0.5) r = _clearColor.X - 0.5f * _gridIntensity;
                             if (_clearColor.X <= 0.5) r = _clearColor.X + 0.5f * _gridIntensity;
@@ -727,7 +911,8 @@ namespace Designer {
                             if (_clearColor.Z <= 0.5) b = _clearColor.Z + 0.5f * _gridIntensity;
                             c = new RgbaFloat(r, g, b, 1.0f);
                         }
-                        if (Data.gridLines[l].layer == 1) {
+                        if (Data.gridLines[l].layer == 1)
+                        {
                             float r = 0f, g = 0f, b = 0f;
                             if (_clearColor.X > 0.5) r = _clearColor.X - 1.0f * _gridIntensity;
                             if (_clearColor.X <= 0.5) r = _clearColor.X + 1.0f * _gridIntensity;
@@ -737,12 +922,10 @@ namespace Designer {
                             if (_clearColor.Z <= 0.5) b = _clearColor.Z + 1.0f * _gridIntensity;
                             c = new RgbaFloat(r, g, b, 1.0f);
                         }
-                        //c = new RgbaFloat(_clearColor.X+0.05f, _clearColor.Y+0.05f, _clearColor.Z+0.05f, 1.0f);
 
                         LineVertex v1 = new LineVertex();
                         v1.Width = _gridlinewidth;
                         v1.Edge = 0;
-                        // v1.Color = new RgbaFloat(_gridColor.X+_clearColor.X, _gridColor.Y, _gridColor.Z, 1.0f);
                         v1.Color = c;
                         v1.Position = Data.gridLines[l].lineData[0];
 
@@ -755,14 +938,12 @@ namespace Designer {
                         LineVertex v3 = new LineVertex();
                         v3.Width = _gridlinewidth;
                         v3.Edge = 0;
-                        // v3.Color = new RgbaFloat(_gridColor.X, _gridColor.Y, _gridColor.Z, 1.0f);
                         v3.Color = c;
                         v3.Position = Data.gridLines[l].lineData[0] + new Vector2(Data.gridLines[l].lineData[1].X, 0);
 
                         LineVertex v4 = new LineVertex();
                         v4.Width = _gridlinewidth;
                         v4.Edge = 1;
-                        // v4.Color = new RgbaFloat(_gridColor.X, _gridColor.Y, _gridColor.Z, 1.0f);
                         v4.Color = c;
                         v4.Position = Data.gridLines[l].lineData[0] + Data.gridLines[l].lineData[1];
 
@@ -771,9 +952,96 @@ namespace Designer {
                         gridLineVertices.Insert(vCount + 2, v3);
                         gridLineVertices.Insert(vCount + 3, v4);
                         vCount += 4;
-                        cCount++;
+                        // cCount++;
                     }
                 }
+
+                /// Add the border.
+                /// 
+
+                RgbaFloat borderC = new RgbaFloat(_borderColor.X, _borderColor.Y, _borderColor.Z, 1.0f);
+
+                LineVertex v;
+
+                v = new LineVertex();
+                v.Width = _gridlinewidth;
+                v.Edge = 0;
+                v.Color = borderC;
+                v.Position = new Vector2(-_borderWidth * Data.stepsPerMM, -_borderWidth * Data.stepsPerMM);
+                gridLineVertices.Insert(vCount, v);
+                vCount++;
+
+                v = new LineVertex();
+                v.Width = _gridlinewidth;
+                v.Edge = 1;
+                v.Color = borderC;
+                v.Position = new Vector2(0f, 0f);
+                gridLineVertices.Insert(vCount, v);
+                vCount++;
+
+                v = new LineVertex();
+                v.Width = _gridlinewidth;
+                v.Edge = 0;
+                v.Color = borderC;
+                v.Position = new Vector2((_drawSize[0] + _borderWidth) * Data.stepsPerMM, -_borderWidth * Data.stepsPerMM);
+                gridLineVertices.Insert(vCount, v);
+                vCount++;
+
+                v = new LineVertex();
+                v.Width = _gridlinewidth;
+                v.Edge = 1;
+                v.Color = borderC;
+                v.Position = new Vector2(_drawSize[0] * Data.stepsPerMM, 0f);
+                gridLineVertices.Insert(vCount, v);
+                vCount++;
+
+                v = new LineVertex();
+                v.Width = _gridlinewidth;
+                v.Edge = 0;
+                v.Color = borderC;
+                v.Position = new Vector2((_drawSize[0] + _borderWidth) * Data.stepsPerMM, (_drawSize[1] + _borderWidth) * Data.stepsPerMM);
+                gridLineVertices.Insert(vCount, v);
+                vCount++;
+
+                v = new LineVertex();
+                v.Width = _gridlinewidth;
+                v.Edge = 1;
+                v.Color = borderC;
+                v.Position = new Vector2(_drawSize[0] * Data.stepsPerMM, _drawSize[1] * Data.stepsPerMM);
+                gridLineVertices.Insert(vCount, v);
+                vCount++;
+
+                v = new LineVertex();
+                v.Width = _gridlinewidth;
+                v.Edge = 0;
+                v.Color = borderC;
+                v.Position = new Vector2((-_borderWidth) * Data.stepsPerMM, (_drawSize[1] + _borderWidth) * Data.stepsPerMM);
+                gridLineVertices.Insert(vCount, v);
+                vCount++;
+
+                v = new LineVertex();
+                v.Width = _gridlinewidth;
+                v.Edge = 1;
+                v.Color = borderC;
+                v.Position = new Vector2(0, _drawSize[1] * Data.stepsPerMM);
+                gridLineVertices.Insert(vCount, v);
+                vCount++;
+
+                v = new LineVertex();
+                v.Width = _gridlinewidth;
+                v.Edge = 0;
+                v.Color = borderC;
+                v.Position = new Vector2(-_borderWidth * Data.stepsPerMM, -_borderWidth * Data.stepsPerMM);
+                gridLineVertices.Insert(vCount, v);
+                vCount++;
+
+                v = new LineVertex();
+                v.Width = _gridlinewidth;
+                v.Edge = 1;
+                v.Color = borderC;
+                v.Position = new Vector2(0f, 0f);
+                gridLineVertices.Insert(vCount, v);
+                vCount++;
 
                 _graphicsDevice.DisposeWhenIdle(_gridLineVertexBuffer);
                 _gridLineVertexBuffer = _graphicsDevice.ResourceFactory.CreateBuffer(new BufferDescription((uint)vCount * 36, BufferUsage.VertexBuffer));
@@ -783,32 +1051,38 @@ namespace Designer {
             }
         }
 
-        private static void DrawDots() {
+        private static void DrawDots()
+        {
             _commandList.SetPipeline(_dotPipeline);
             _commandList.SetGraphicsResourceSet(0, _viewportResourceSet);
             _commandList.SetVertexBuffer(0, _dotVertexBuffer);
 
             uint vStart = 0;
             uint vLength = 4;
-            for (int l = 0; l < Data.dots.Count; l++) {
+            for (int l = 0; l < Data.dots.Count; l++)
+            {
                 _commandList.Draw(vertexCount: vLength, instanceCount: 1, vertexStart: vStart, instanceStart: 0);
                 vStart += vLength;
             }
         }
 
-        private static void DrawLines() {
+        private static void DrawLines()
+        {
             _commandList.SetPipeline(_linePipeline);
             _commandList.SetGraphicsResourceSet(0, _viewportResourceSet);
             _commandList.SetVertexBuffer(0, _lineVertexBuffer);
 
             uint vStart = 0;
             uint vLength = 0;
-            for (int l = 0; l < Data.lines.Count; l++) {
-                if (Data.lines[l].type == LineType.QuadraticBezier) {
+            for (int l = 0; l < Data.lines.Count; l++)
+            {
+                if (Data.lines[l].type == LineType.QuadraticBezier)
+                {
                     vLength = Data.lines[l].vCount;
                 }
 
-                if (Data.lines[l].type == LineType.Straight) {
+                if (Data.lines[l].type == LineType.Straight)
+                {
                     vLength = Data.lines[l].vCount;
                 }
                 _commandList.Draw(vertexCount: vLength, instanceCount: 1, vertexStart: vStart, instanceStart: 0);
@@ -816,38 +1090,59 @@ namespace Designer {
             }
         }
 
-        private static void DrawGridLines() {
+        private static void DrawGridLines()
+        {
             _commandList.SetPipeline(_gridLinePipeline);
             _commandList.SetGraphicsResourceSet(0, _viewportResourceSet);
             _commandList.SetVertexBuffer(0, _gridLineVertexBuffer);
 
             uint vStart = 0;
             uint vLength = 0;
-            for (int l = 0; l < Data.gridLines.Count; l++) {
-                if (Data.gridLines[l].type == LineType.Straight) {
+            for (int l = 0; l < Data.gridLines.Count; l++)
+            {
+                if (Data.gridLines[l].type == LineType.Straight)
+                {
                     vLength = (uint)Data.gridLines[l].lineData.Length * 2;
                 }
                 _commandList.Draw(vertexCount: vLength, instanceCount: 1, vertexStart: vStart, instanceStart: 0);
                 vStart += vLength;
             }
+            // Draw the border.
+            _commandList.Draw(vertexCount: 10, instanceCount: 1, vertexStart: vStart, instanceStart: 0);
         }
 
-        private static void UpdateInput(InputSnapshot snapshot, float deltaSeconds) {
+        private static void DrawDepthBuffer()
+        {
+            _commandList.SetPipeline(_depthPipeline);
+            _commandList.SetGraphicsResourceSet(0, _viewportResourceSet);
+            _commandList.SetGraphicsResourceSet(1, _depthTextureSet);
+            _commandList.SetVertexBuffer(0, _depthVertexBuffer);
+
+            // Draw the depthbuffer.
+            _commandList.Draw(vertexCount: 4, instanceCount: 1, vertexStart: 0, instanceStart: 0);
+        }
+
+        private static void UpdateInput(InputSnapshot snapshot, float deltaSeconds)
+        {
             // Handle input that is not used by ImGui.
-            if (!ImGui.GetIO().WantCaptureMouse) {
+            if (!ImGui.GetIO().WantCaptureMouse)
+            {
                 // if (snapshot.IsMouseDown(MouseButton.Left)) {
                 // } else {
                 //     ImGui.SetMouseCursor(ImGuiMouseCursor.Arrow);
                 // }
-                if (ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left)) {
+                if (ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
+                {
                     // Console.WriteLine("leftDoubleClicked");
                 }
-                if (ImGui.IsMouseReleased(ImGuiMouseButton.Left)) {
+                if (ImGui.IsMouseReleased(ImGuiMouseButton.Left))
+                {
                     // Console.WriteLine("leftReleased");
                     // Console.WriteLine(ImGui.GetMouseDragDelta());
                 }
 
-                if (ImGui.IsMouseDragging(ImGuiMouseButton.Left)) {
+                if (ImGui.IsMouseDragging(ImGuiMouseButton.Left))
+                {
                     ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeAll);
                     // Console.WriteLine(ImGui.GetMouseDragDelta());
                     _cameraPosition = _cameraPosition - new Vector2(ImGui.GetMouseDragDelta().X * ((25600f / MathF.PI) / _zoomlevels[_zoom]), -ImGui.GetMouseDragDelta().Y * ((25600f / MathF.PI) / _zoomlevels[_zoom]));
@@ -858,7 +1153,8 @@ namespace Designer {
                     ImGui.ResetMouseDragDelta();
                 }
 
-                if (ImGui.IsMouseDown(ImGuiMouseButton.Left)) {
+                if (ImGui.IsMouseDown(ImGuiMouseButton.Left))
+                {
                 }
 
                 // for (int i = 0; i < snapshot.MouseEvents.Count; i++) {
@@ -889,9 +1185,11 @@ namespace Designer {
                 //     }
                 // }
 
-                if (snapshot.WheelDelta > 0) {
+                if (snapshot.WheelDelta > 0)
+                {
                     // _cameraPosition = _cameraPosition - new Vector3(0,0,10);
-                    if (_zoom < _zoomlevels.Count() - 1) {
+                    if (_zoom < _zoomlevels.Count() - 1)
+                    {
                         _zoom += 1;
                         _iniData["Camera"]["Zoom"] = _zoom.ToString();
                         _iniParser.WriteFile("Configuration.ini", _iniData);
@@ -899,10 +1197,12 @@ namespace Designer {
                     }
                     // Console.WriteLine("zoomin");
                 }
-                if (snapshot.WheelDelta < 0) {
+                if (snapshot.WheelDelta < 0)
+                {
                     // Console.WriteLine("zoomout");
                     // _cameraPosition = _cameraPosition + new Vector3(0,0,10);
-                    if (_zoom > 0) {
+                    if (_zoom > 0)
+                    {
                         _zoom -= 1;
                         _iniData["Camera"]["Zoom"] = _zoom.ToString();
                         _iniParser.WriteFile("Configuration.ini", _iniData);
@@ -911,14 +1211,19 @@ namespace Designer {
 
 
                 //check if Keyboared in use by ImGui
-                if (!ImGui.GetIO().WantCaptureKeyboard) {
-                    for (int i = 0; i < snapshot.KeyEvents.Count; i++) {
+                if (!ImGui.GetIO().WantCaptureKeyboard)
+                {
+                    for (int i = 0; i < snapshot.KeyEvents.Count; i++)
+                    {
                         KeyEvent ke = snapshot.KeyEvents[i];
-                        if (ke.Down) {
+                        if (ke.Down)
+                        {
                             // Console.Write("keydown: ");
                             // Console.WriteLine(ke.Key);
                             // Data.DebugConsole.Add("keydown: " + ke.Key.ToString());
-                        } else {
+                        }
+                        else
+                        {
                             // Console.Write("keyup: ");
                             // Console.WriteLine(ke.Key);
                             // Data.DebugConsole.Add("keyup: " + ke.Key.ToString());
@@ -928,19 +1233,24 @@ namespace Designer {
             }
         }
 
-        private static void rebuildGUI() {
+        private static void rebuildGUI()
+        {
             ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
             ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
             ImGui.PushStyleColor(ImGuiCol.HeaderActive, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
-            if (ImGui.BeginMainMenuBar()) {
-                if (ImGui.BeginMenu("File")) {
-                    if (ImGui.MenuItem("Quit", "", false, true)) {
+            if (ImGui.BeginMainMenuBar())
+            {
+                if (ImGui.BeginMenu("File"))
+                {
+                    if (ImGui.MenuItem("Quit", "", false, true))
+                    {
                         _window.Close();
                     };
                     ImGui.EndMenu();
                 }
 
-                if (ImGui.BeginMenu("Window")) {
+                if (ImGui.BeginMenu("Window"))
+                {
                     ImGui.MenuItem("Settings", string.Empty, ref _showSettingsWindow, true);
                     ImGui.MenuItem("ImGui Demo", string.Empty, ref _showImGuiDemoWindow, true);
                     ImGui.Separator();
@@ -957,14 +1267,16 @@ namespace Designer {
             ImGui.PopStyleColor();
             ImGui.PopStyleColor();
 
-            if (_showImGuiDemoWindow) {
+            if (_showImGuiDemoWindow)
+            {
                 // Normally user code doesn't need/want to call this because positions are saved in .ini file anyway.
                 // Here we just want to make the demo initial state a bit more friendly!
                 ImGui.SetNextWindowPos(new Vector2(650, 20), ImGuiCond.FirstUseEver);
                 ImGui.ShowDemoWindow(ref _showImGuiDemoWindow);
             }
 
-            if (_showSettingsWindow) {
+            if (_showSettingsWindow)
+            {
                 ImGui.SetNextWindowPos(new Vector2(_window.Width - 275f, 20f));
                 ImGui.SetNextWindowSize(new Vector2(275f, _window.Height - 30f));
                 ImGui.Begin("Settings", ref _showSettingsWindow, ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoResize);
@@ -972,11 +1284,13 @@ namespace Designer {
                 ImGui.PushStyleColor(ImGuiCol.Text, textcolor2);
                 ImGui.PushFont(_imGuiRenderer.fontBold);
                 ImGui.SetNextItemOpen(_openDrawSettingsHeader);
-                if (ImGui.CollapsingHeader("Draw Settings")) {
+                if (ImGui.CollapsingHeader("Draw Settings"))
+                {
                     ImGui.PushStyleColor(ImGuiCol.Text, textcolor1);
 
                     ImGui.PushFont(_imGuiRenderer.fontRegular);
-                    if (!_openDrawSettingsHeader) {
+                    if (!_openDrawSettingsHeader)
+                    {
                         _openDrawSettingsHeader = true;
                         _iniData["Header"]["DrawSettings"] = "true";
                         _iniParser.WriteFile("Configuration.ini", _iniData);
@@ -989,7 +1303,8 @@ namespace Designer {
                     ImGui.Dummy(new Vector2(52, 0));
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(130);
-                    if (ImGui.ColorEdit3("##clearcol", ref _clearColor)) {
+                    if (ImGui.ColorEdit3("##clearcol", ref _clearColor))
+                    {
                         _iniData["ClearColor"]["R"] = _clearColor.X.ToString();
                         _iniData["ClearColor"]["G"] = _clearColor.Y.ToString();
                         _iniData["ClearColor"]["B"] = _clearColor.Z.ToString();
@@ -1002,7 +1317,8 @@ namespace Designer {
                     ImGui.Dummy(new Vector2(53, 0));
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(130);
-                    if (ImGui.ColorEdit3("##drawcol", ref _drawColor)) {
+                    if (ImGui.ColorEdit3("##drawcol", ref _drawColor))
+                    {
                         _iniData["DrawColor"]["R"] = _drawColor.X.ToString();
                         _iniData["DrawColor"]["G"] = _drawColor.Y.ToString();
                         _iniData["DrawColor"]["B"] = _drawColor.Z.ToString();
@@ -1015,7 +1331,8 @@ namespace Designer {
                     ImGui.Dummy(new Vector2(15, 0));
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(130);
-                    if (ImGui.DragFloat("##line", ref _linewidth, 0.1f, 0.0f, 70.0f)) {
+                    if (ImGui.DragFloat("##line", ref _linewidth, 0.1f, 0.0f, 70.0f))
+                    {
                         _iniData["Line"]["Width"] = _linewidth.ToString();
                         _iniParser.WriteFile("Configuration.ini", _iniData);
                         _recreateLineVerticeArray = true;
@@ -1030,7 +1347,8 @@ namespace Designer {
                     ImGui.Dummy(new Vector2(60, 0));
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(130);
-                    if (ImGui.SliderFloat("##gridcol", ref _gridIntensity, 0, 1)) {
+                    if (ImGui.SliderFloat("##gridcol", ref _gridIntensity, 0, 1))
+                    {
                         _iniData["Grid"]["Intensity"] = _gridIntensity.ToString();
                         _iniParser.WriteFile("Configuration.ini", _iniData);
                         _recreateGridLineVerticeArray = true;
@@ -1041,7 +1359,8 @@ namespace Designer {
                     ImGui.Dummy(new Vector2(58, 0));
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(130);
-                    if (ImGui.DragInt2("##drawsize", ref _drawSize[0], 1, 1, 1500)) {
+                    if (ImGui.DragInt2("##drawsize", ref _drawSize[0], 1, 1, 1500))
+                    {
                         _iniData["Draw"]["Width"] = _drawSize[0].ToString();
                         _iniData["Draw"]["Height"] = _drawSize[1].ToString();
                         _iniParser.WriteFile("Configuration.ini", _iniData);
@@ -1053,7 +1372,8 @@ namespace Designer {
                     ImGui.Dummy(new Vector2(96, 0));
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(130);
-                    if (ImGui.DragInt2("##gridsub", ref _gridSize[0], 1, 1, 1500)) {
+                    if (ImGui.DragInt2("##gridsub", ref _gridSize[0], 1, 1, 1500))
+                    {
                         _iniData["Grid"]["Width"] = _gridSize[0].ToString();
                         _iniData["Grid"]["Height"] = _gridSize[1].ToString();
                         _iniParser.WriteFile("Configuration.ini", _iniData);
@@ -1062,11 +1382,56 @@ namespace Designer {
 
                     ImGui.Spacing();
                     ImGui.Spacing();
+                    ImGui.Text("Border color:");
+                    ImGui.SameLine();
+                    ImGui.Dummy(new Vector2(43, 0));
+                    ImGui.SameLine();
+                    ImGui.SetNextItemWidth(130);
+                    if (ImGui.ColorEdit3("##bordercol", ref _borderColor))
+                    {
+                        _iniData["BorderColor"]["R"] = _borderColor.X.ToString();
+                        _iniData["BorderColor"]["G"] = _borderColor.Y.ToString();
+                        _iniData["BorderColor"]["B"] = _borderColor.Z.ToString();
+                        _iniParser.WriteFile("Configuration.ini", _iniData);
+                        _recreateGridLineVerticeArray = true;
+                    }
+
+                    ImGui.Text("Border width (mm):");
+                    ImGui.SameLine();
+                    ImGui.Dummy(new Vector2(5, 0));
+                    ImGui.SameLine();
+                    ImGui.SetNextItemWidth(130);
+                    if (ImGui.DragFloat("##borderwidth", ref _borderWidth, 1.0f, 1.0f, 200.0f))
+                    {
+                        _iniData["Border"]["Width"] = _borderWidth.ToString();
+                        _iniParser.WriteFile("Configuration.ini", _iniData);
+                        _recreateGridLineVerticeArray = true;
+                    };
+
+                    ImGui.Spacing();
+                    ImGui.Spacing();
+                    ImGui.Text("Depth color:");
+                    ImGui.SameLine();
+                    ImGui.Dummy(new Vector2(48, 0));
+                    ImGui.SameLine();
+                    ImGui.SetNextItemWidth(130);                    
+                    if (ImGui.SliderFloat("##depthcol", ref _depthIntensity, 0, 1))
+                    {
+                        _iniData["Depth"]["Intensity"] = _depthIntensity.ToString();
+                        _iniParser.WriteFile("Configuration.ini", _iniData);
+                        _recreateDepthVerticeArray = true;
+                    }
+
+                    ImGui.Spacing();
+                    ImGui.Spacing();
                     ImGui.PopStyleColor();
                     ImGui.PopFont();
 
-                } else {
-                    if (_openDrawSettingsHeader) {
+                }
+                else
+                {
+                    if (_openDrawSettingsHeader)
+                    {
                         _openDrawSettingsHeader = false;
                         _iniData["Header"]["DrawSettings"] = "false";
                         _iniParser.WriteFile("Configuration.ini", _iniData);
@@ -1078,10 +1443,12 @@ namespace Designer {
                 ImGui.PushStyleColor(ImGuiCol.Text, textcolor2);
                 ImGui.PushFont(_imGuiRenderer.fontBold);
                 ImGui.SetNextItemOpen(_openCameraHeader);
-                if (ImGui.CollapsingHeader("Camera")) {
+                if (ImGui.CollapsingHeader("Camera"))
+                {
                     ImGui.PushStyleColor(ImGuiCol.Text, textcolor1);
                     ImGui.PushFont(_imGuiRenderer.fontRegular);
-                    if (!_openCameraHeader) {
+                    if (!_openCameraHeader)
+                    {
                         _openCameraHeader = true;
                         _iniData["Header"]["Camera"] = "true";
                         _iniParser.WriteFile("Configuration.ini", _iniData);
@@ -1093,8 +1460,9 @@ namespace Designer {
                     ImGui.Dummy(new Vector2(66, 0));
                     ImGui.SameLine();
                     ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 2f);
-                    if (ImGui.Button("center", new Vector2(104, 20))) {
-                        _cameraPosition = new Vector2(_drawSize[0] * (2560f / (R2 * MathF.PI)), _drawSize[1] * (2560f / (R2 * MathF.PI)));
+                    if (ImGui.Button("center", new Vector2(104, 20)))
+                    {
+                        _cameraPosition = new Vector2(_drawSize[0] * (Data.stepsPerMM * 0.5f), _drawSize[1] * (Data.stepsPerMM * 0.5f));
                         _iniData["Camera"]["PosX"] = _cameraPosition.X.ToString();
                         _iniData["Camera"]["PosY"] = _cameraPosition.Y.ToString();
                         _iniParser.WriteFile("Configuration.ini", _iniData);
@@ -1104,7 +1472,8 @@ namespace Designer {
 
 
                     ImGui.SetNextItemWidth(262.0f);
-                    if (ImGui.DragFloat2("##_camPos", ref _cameraPosition)) {
+                    if (ImGui.DragFloat2("##_camPos", ref _cameraPosition))
+                    {
                         _iniData["Camera"]["PosX"] = _cameraPosition.X.ToString();
                         _iniData["Camera"]["PosY"] = _cameraPosition.Y.ToString();
                         _iniParser.WriteFile("Configuration.ini", _iniData);
@@ -1114,13 +1483,15 @@ namespace Designer {
 
                     ImGui.Text("Rotation                      Zoom");
                     ImGui.SetNextItemWidth(129.0f);
-                    if (ImGui.DragFloat("##_camRot", ref _cameraRotation)) {
+                    if (ImGui.DragFloat("##_camRot", ref _cameraRotation))
+                    {
                         _iniData["Camera"]["Rotation"] = _cameraRotation.ToString();
                         _iniParser.WriteFile("Configuration.ini", _iniData);
                     }
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(129.0f);
-                    if (ImGui.SliderInt("##_camZoom2", ref _zoom, 0, _zoomlevels.Count() - 1, _zoomlevels[_zoom].ToString() + "%%")) {
+                    if (ImGui.SliderInt("##_camZoom2", ref _zoom, 0, _zoomlevels.Count() - 1, _zoomlevels[_zoom].ToString() + "%%"))
+                    {
                         _iniData["Camera"]["Zoom"] = _zoom.ToString();
                         _iniParser.WriteFile("Configuration.ini", _iniData);
                     }
@@ -1130,8 +1501,11 @@ namespace Designer {
                     ImGui.PopStyleColor();
                     ImGui.PopFont();
 
-                } else {
-                    if (_openCameraHeader) {
+                }
+                else
+                {
+                    if (_openCameraHeader)
+                    {
                         _openCameraHeader = false;
                         _iniData["Header"]["Camera"] = "false";
                         _iniParser.WriteFile("Configuration.ini", _iniData);
@@ -1144,11 +1518,13 @@ namespace Designer {
                 ImGui.PushStyleColor(ImGuiCol.Text, textcolor2);
                 ImGui.PushFont(_imGuiRenderer.fontBold);
                 ImGui.SetNextItemOpen(_openGeneratorHeader);
-                if (ImGui.CollapsingHeader("Generator")) {
+                if (ImGui.CollapsingHeader("Generator"))
+                {
                     ImGui.PushStyleColor(ImGuiCol.Text, textcolor1);
                     ImGui.PushFont(_imGuiRenderer.fontRegular);
 
-                    if (!_openGeneratorHeader) {
+                    if (!_openGeneratorHeader)
+                    {
                         _openGeneratorHeader = true;
                         _iniData["Header"]["Generator"] = "true";
                         _iniParser.WriteFile("Configuration.ini", _iniData);
@@ -1161,22 +1537,27 @@ namespace Designer {
                     ImGui.SameLine();
                     ImGui.SameLine();
                     ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 2f);
-                    if (ImGui.Button("refresh##scriptfiles", new Vector2(104f, 20f))) {
+                    if (ImGui.Button("refresh##scriptfiles", new Vector2(104f, 20f)))
+                    {
                         scriptNames = Directory.GetFiles("scripts", "*.cs");
                     }
                     ImGui.PopStyleVar();
 
-                    if (scriptNames.Count() > 0) {
+                    if (scriptNames.Count() > 0)
+                    {
                         ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
                         ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
                         ImGui.PushStyleColor(ImGuiCol.HeaderActive, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
                         ImGui.PushItemWidth(260);
-                        if (ImGui.BeginCombo("##comboscriptfiles", scriptNames[_selectedScript].Split("scripts/")[1])) {
-                            for (int n = 0; n < scriptNames.Count(); n++) {
+                        if (ImGui.BeginCombo("##comboscriptfiles", scriptNames[_selectedScript].Split("scripts/")[1]))
+                        {
+                            for (int n = 0; n < scriptNames.Count(); n++)
+                            {
                                 bool is_selected = (scriptNames[_selectedScript] == scriptNames[n]); // You can store your selection however you want, outside or inside your objects
                                 if (ImGui.Selectable(scriptNames[n].Split("scripts/")[1], is_selected))
                                     _selectedScript = n;
-                                if (is_selected) {
+                                if (is_selected)
+                                {
                                     ImGui.SetItemDefaultFocus();   // You may set the initial focus when opening the combo (scrolling + for keyboard navigation support)
                                 }
                             }
@@ -1186,7 +1567,9 @@ namespace Designer {
                         ImGui.PopStyleColor();
                         ImGui.PopStyleColor();
                         ImGui.PopStyleColor();
-                    } else {
+                    }
+                    else
+                    {
                         ImGui.AlignTextToFramePadding();
                         ImGui.Text("No scripts found.");
                         ImGui.SameLine();
@@ -1196,17 +1579,24 @@ namespace Designer {
                     ImGui.Spacing();
 
                     ImGui.SetNextItemWidth(160);
-                    ImGui.DragInt("##RandomSeed", ref _seed);
+                    if (ImGui.DragInt("##RandomSeed", ref _seed)) {
+                        _iniData["Generator"]["Seed"] = _seed.ToString();
+                        _iniParser.WriteFile("Configuration.ini", _iniData);
+                    };
                     ImGui.SameLine();
                     ImGui.Dummy(new Vector2(5f, 0f));
                     ImGui.SameLine();
-                    ImGui.Checkbox(" Use Seed", ref _useRandomSeed);
+                    if (ImGui.Checkbox(" Use Seed", ref _useRandomSeed)) {
+                        _iniData["Generator"]["UseSeed"] = _useRandomSeed.ToString();
+                        _iniParser.WriteFile("Configuration.ini", _iniData);
+                    };
 
                     ImGui.Spacing();
                     // ImGui.Dummy(new Vector2(0f, 10f));
 
                     ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 2f);
-                    if (ImGui.Button("compile and generate", new Vector2(260, 22))) {
+                    if (ImGui.Button("compile and generate", new Vector2(260, 22)))
+                    {
                         Generate();
                     }
                     ImGui.PopStyleVar();
@@ -1216,26 +1606,33 @@ namespace Designer {
 
                     ImGui.Spacing();
                     ImGui.SetNextItemWidth(260f);
-                    if (ImGui.InputText("##expfilepath", ref _exportfilepath, 80)) {
+                    if (ImGui.InputText("##expfilepath", ref _exportfilepath, 80))
+                    {
                         _iniData["Generator"]["FilePath"] = _exportfilepath;
                         _iniParser.WriteFile("Configuration.ini", _iniData);
                     };
                     ImGui.SetNextItemWidth(260f);
-                    if (ImGui.InputText("##expfilename", ref _exportfilename, 80)) {
+                    if (ImGui.InputText("##expfilename", ref _exportfilename, 80))
+                    {
                         _iniData["Generator"]["FileName"] = _exportfilename;
                         _iniParser.WriteFile("Configuration.ini", _iniData);
                     };
 
                     ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 2f);
-                    if (ImGui.Button("choose file", new Vector2(100, 22))) {
+                    if (ImGui.Button("choose file", new Vector2(100, 22)))
+                    {
                         List<String> outputs = new List<string>();
                         string arg = " --getsavefilename ";
-                        if (System.IO.Directory.Exists(_exportfilepath)) {
+                        if (System.IO.Directory.Exists(_exportfilepath))
+                        {
                             arg += _exportfilepath;
-                        } else {
+                        }
+                        else
+                        {
                             arg += Environment.GetEnvironmentVariable("HOME");
                         }
-                        ProcessStartInfo startInfo = new ProcessStartInfo() {
+                        ProcessStartInfo startInfo = new ProcessStartInfo()
+                        {
                             FileName = "kdialog",
                             Arguments = arg,
                             RedirectStandardOutput = true
@@ -1247,10 +1644,12 @@ namespace Designer {
 
                         string line;
                         string lastline = "";
-                        while ((line = reader.ReadLine()) != null) {
+                        while ((line = reader.ReadLine()) != null)
+                        {
                             lastline = line;
                         }
-                        if (lastline != "") {
+                        if (lastline != "")
+                        {
                             string[] dirs = lastline.Split('/');
                             _exportfilename = dirs.Last<String>();
                             _exportfilepath = lastline.Substring(0, lastline.Length - _exportfilename.Length);
@@ -1263,15 +1662,22 @@ namespace Designer {
                     ImGui.SameLine();
                     ImGui.Dummy(new Vector2(54, 0));
                     ImGui.SameLine();
-                    if (ImGui.Button("export file", new Vector2(100, 22))) {
-                        if (_exportfilename.Length > 0) {
-                            if (System.IO.Directory.Exists(_exportfilepath)) {
+                    if (ImGui.Button("export file", new Vector2(100, 22)))
+                    {
+                        if (_exportfilename.Length > 0)
+                        {
+                            if (System.IO.Directory.Exists(_exportfilepath))
+                            {
                                 Export(_exportfilepath + _exportfilename);
-                            } else {
+                            }
+                            else
+                            {
                                 Console.WriteLine("directory does not exist.");
                                 Data.DebugConsole.Add("Directory does not exist.");
                             }
-                        } else {
+                        }
+                        else
+                        {
                             Console.WriteLine("No filename specified.");
                             Data.DebugConsole.Add("No filename specified.");
                         }
@@ -1282,8 +1688,11 @@ namespace Designer {
                     ImGui.PopFont();
                     ImGui.Spacing();
                     ImGui.Spacing();
-                } else {
-                    if (_openGeneratorHeader) {
+                }
+                else
+                {
+                    if (_openGeneratorHeader)
+                    {
                         _openGeneratorHeader = false;
                         _iniData["Header"]["Generator"] = "false";
                         _iniParser.WriteFile("Configuration.ini", _iniData);
@@ -1291,15 +1700,17 @@ namespace Designer {
                 }
                 ImGui.PopStyleColor();
                 ImGui.PopFont();
-                
+
                 //// Statistics 
                 ImGui.PushStyleColor(ImGuiCol.Text, textcolor2);
                 ImGui.PushFont(_imGuiRenderer.fontBold);
                 ImGui.SetNextItemOpen(_openStatisticsHeader);
-                if (ImGui.CollapsingHeader("Stats")) {
+                if (ImGui.CollapsingHeader("Stats"))
+                {
                     ImGui.PushStyleColor(ImGuiCol.Text, textcolor1);
                     ImGui.PushFont(_imGuiRenderer.fontRegular);
-                    if (!_openStatisticsHeader) {
+                    if (!_openStatisticsHeader)
+                    {
                         _openStatisticsHeader = true;
                         _iniData["Header"]["Statistics"] = "true";
                         _iniParser.WriteFile("Configuration.ini", _iniData);
@@ -1320,8 +1731,11 @@ namespace Designer {
                     ImGui.PopStyleColor();
                     ImGui.PopFont();
 
-                } else {
-                    if (_openStatisticsHeader) {
+                }
+                else
+                {
+                    if (_openStatisticsHeader)
+                    {
                         _openStatisticsHeader = false;
                         _iniData["Header"]["Statistics"] = "false";
                         _iniParser.WriteFile("Configuration.ini", _iniData);
@@ -1333,11 +1747,13 @@ namespace Designer {
                 ImGui.PushStyleColor(ImGuiCol.Text, textcolor2);
                 ImGui.PushFont(_imGuiRenderer.fontBold);
                 ImGui.SetNextItemOpen(_openDebugConsoleHeader);
-                if (ImGui.CollapsingHeader("Debug Console")) {
+                if (ImGui.CollapsingHeader("Debug Console"))
+                {
                     ImGui.PushStyleColor(ImGuiCol.Text, textcolor1);
                     ImGui.PushFont(_imGuiRenderer.fontRegular);
 
-                    if (!_openDebugConsoleHeader) {
+                    if (!_openDebugConsoleHeader)
+                    {
                         _openDebugConsoleHeader = true;
                         _iniData["Header"]["DebugConsole"] = "true";
                         _iniParser.WriteFile("Configuration.ini", _iniData);
@@ -1346,7 +1762,8 @@ namespace Designer {
                     ImGui.Spacing();
                     ImGui.SetNextWindowSizeConstraints(new Vector2(100f, 100f), new Vector2(1500f, 200f));
                     ImGui.BeginChild("DebugConsoleChild", new Vector2(300f, 240f), true, ImGuiWindowFlags.AlwaysVerticalScrollbar);
-                    foreach (String msg in Data.DebugConsole) {
+                    foreach (String msg in Data.DebugConsole)
+                    {
                         ImGui.Text(msg);
                     }
                     ImGui.EndChild();
@@ -1354,8 +1771,11 @@ namespace Designer {
                     ImGui.Dummy(new Vector2(0, 15f));
                     ImGui.PopStyleColor();
                     ImGui.PopFont();
-                } else {
-                    if (_openDebugConsoleHeader) {
+                }
+                else
+                {
+                    if (_openDebugConsoleHeader)
+                    {
                         _openDebugConsoleHeader = false;
                         _iniData["Header"]["DebugConsole"] = "false";
                         _iniParser.WriteFile("Configuration.ini", _iniData);

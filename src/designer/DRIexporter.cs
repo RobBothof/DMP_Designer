@@ -8,7 +8,7 @@ namespace Designer
     {
         public List<DrawInstruction> DrawInstructions;
         private UInt64 index = 0;
-        private UInt64 dotIndex = 0;
+        // private UInt64 dotIndex = 0;
         private Int64 lastX = 0;
         private Int64 lastY = 0;
         private Int64 lastZ = 0;
@@ -42,7 +42,7 @@ namespace Designer
             }
             Int64 instructioncount = 0;
             index = 0;
-            dotIndex = 0;
+            // dotIndex = 0;
             lastX = 0;
             lastY = 0;
             foreach (Line l in Data.lines)
@@ -61,13 +61,13 @@ namespace Designer
 
                 if (l.type == LineType.Straight)
                 {
-                    DrawInstructions.Add(
-                        AddLine(
+                    DrawInstruction d = AddLine(
                             (Int64)l.points[0].X, (Int64)l.points[0].Y, (Int64)l.points[0].Z,
                             (Int64)l.points[1].X, (Int64)l.points[1].Y, (Int64)l.points[1].Z,
                             l.acceleration
-                        )
-                    );
+                        );
+                    d.index = index;
+                    DrawInstructions.Add(d);
                     index++;
                 }
 
@@ -118,7 +118,7 @@ namespace Designer
             bytes.Add(0);
             bytes.Add((byte)d.groupIndex);
             bytes.Add(0);
-            bytes.Add((byte)d.groupIndex);
+            bytes.Add((byte)d.groupSize);
             bytes.Add(0);
             bytes.AddRange(BitConverter.GetBytes(d.startX));
             bytes.Add(0);
@@ -229,18 +229,21 @@ namespace Designer
 
             dGroup.Add(AddBezierSegment(startX, startY, startZ, controlX, controlY, controlZ, endX, endY, endZ, acceleration));
 
-            UInt64 groupSteps=0;
-            int groupSize=dGroup.Count();
-            
-            foreach (DrawInstruction d in dGroup) {
-                groupSteps+=d.steps;
+            UInt64 groupSteps = 0;
+            int groupSize = dGroup.Count();
+
+            foreach (DrawInstruction d in dGroup)
+            {
+                groupSteps += d.steps;
             }
-            
-            for (int i=0; i < groupSize; i++) {
+
+            for (int i = 0; i < groupSize; i++)
+            {
                 DrawInstruction d = dGroup[i];
-                d.groupIndex = (byte) i;
-                d.groupSize = (byte) groupSize;
+                d.groupIndex = (byte)i;
+                d.groupSize = (byte)groupSize;
                 d.steps = groupSteps;
+                d.index = index;
 
                 DrawInstructions.Add(d);
                 index++;
@@ -439,7 +442,7 @@ namespace Designer
                 Console.WriteLine(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
                 Data.DebugConsole.Add(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
 
-                d.index = index;
+                // d.index = index;
                 d.steps = steps;
                 // DrawInstructions.Add(d);
                 // index++;
@@ -636,7 +639,7 @@ namespace Designer
                 Console.WriteLine(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
                 Data.DebugConsole.Add(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
 
-                d.index = index;
+                // d.index = index;
                 d.steps = steps;
                 // DrawInstructions.Add(d);
                 // index++;
@@ -830,7 +833,7 @@ namespace Designer
                 Console.WriteLine(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
                 Data.DebugConsole.Add(String.Format("Finished Curve with projection: {0} in {1} steps.", projection, steps));
 
-                d.index = index;
+                // d.index = index;
                 d.steps = steps;
                 // DrawInstructions.Add(d);
                 // index++;
@@ -905,8 +908,8 @@ namespace Designer
             d.errX = errX;
             d.errY = errY;
             d.errZ = errZ;
-            d.groupIndex=0;
-            d.groupSize=0;
+            d.groupIndex = 0;
+            d.groupSize = 0;
 
             /// Simulate Draw, to calculate number of steps needed for this instruction
 
@@ -951,7 +954,7 @@ namespace Designer
             // Console.WriteLine(String.Format("Finished Line in {0} steps.", steps));
             // Data.DebugConsole.Add(String.Format("Finished Line in {0} steps.", steps));
 
-            d.index = index;
+            // d.index = index;
             d.steps = steps;
             // DrawInstructions.Add(d);
             // index++;
@@ -965,22 +968,25 @@ namespace Designer
                 Console.WriteLine(String.Format("Jump Occured! ({0}, {1} , {2}),({3}, {4}, {5})", lastX, lastY, lastZ, x, y, z));
                 Data.DebugConsole.Add(String.Format("Jump Occured! ({0}, {1} , {2}),({3}, {4}, {5})", lastX, lastY, lastZ, x, y, z));
             }
-            if (x < 0 || x > 800 * (5120 / (1.25)))  {
+            if (x < 0 || x > 800 * (5120 / (1.25)))
+            {
                 Console.WriteLine(String.Format("Warning: X out of bounds! ({0})", x));
             }
 
-            if (y < 0 || y > 1200 * (5120 / (1.25)))  {
+            if (y < 0 || y > 1200 * (5120 / (1.25)))
+            {
                 Console.WriteLine(String.Format("Warning: Y out of bounds! ({0})", y));
             }
 
-            if (z < 0 || z > 65 * (5120 / (1.25)))  {
+            if (z < 0 || z > 65 * (5120 / (1.25)))
+            {
                 Console.WriteLine(String.Format("Warning: Y out of bounds! ({0})", z));
             }
 
             lastX = x;
             lastY = y;
             lastZ = z;
-            
+
             // Dot dxy = new Dot();
             // dxy.layer = 0;
             // dxy.size = 0.05f * z + 500.0f;
@@ -988,7 +994,7 @@ namespace Designer
             // dxy.position = new Vector2(x, y);
             // Data.dots.Add(dxy);
             // dotIndex++;
-            
+
         }
     }
 }
