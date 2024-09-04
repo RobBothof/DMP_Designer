@@ -5,9 +5,9 @@ using System.Collections.Generic;
 using System.Numerics;
 using Designer;
 
-public class idea003 : IGenerator {
+public class idea010 : IGenerator {
     public static Random _rand;
-    Vector3 PaperCenter = new Vector3(268800, 380160, 0);
+    Vector3 PaperCenter = new Vector3(268800, 380160, 6000);
 
     public void Generate(int seed) {
         Data.lines.Clear();
@@ -15,44 +15,68 @@ public class idea003 : IGenerator {
         _rand = new Random(seed);
 
 
-
-        float rotationOffset = -0.35f;
-        Vector3 P1 = PaperCenter + Vector3.Transform(new Vector3(0, 60000+_rand.Next(30000), 0), Quaternion.CreateFromAxisAngle(Vector3.UnitZ, (rotationOffset + MathF.PI * 0.0f)));
-        Vector3 P2 = PaperCenter + Vector3.Transform(new Vector3(0, 60000+_rand.Next(30000), 2000), Quaternion.CreateFromAxisAngle(Vector3.UnitZ, (rotationOffset + MathF.PI * 0.333f)));
-        Vector3 P3 = PaperCenter + Vector3.Transform(new Vector3(0, 60000+_rand.Next(30000), 0), Quaternion.CreateFromAxisAngle(Vector3.UnitZ, (rotationOffset + MathF.PI * 0.666f)));
-        Vector3 P4 = PaperCenter + Vector3.Transform(new Vector3(0, 60000+_rand.Next(30000), 2000), Quaternion.CreateFromAxisAngle(Vector3.UnitZ, (rotationOffset + MathF.PI * 0.999f)));
-        Vector3 P5 = PaperCenter + Vector3.Transform(new Vector3(0, 60000+_rand.Next(30000), 0), Quaternion.CreateFromAxisAngle(Vector3.UnitZ, (rotationOffset + MathF.PI * 1.333f)));
-        Vector3 P6 = PaperCenter + Vector3.Transform(new Vector3(0, 60000+_rand.Next(30000), 2000), Quaternion.CreateFromAxisAngle(Vector3.UnitZ, (rotationOffset + MathF.PI * 1.666f)));
-        Vector3 P7 = PaperCenter + Vector3.Transform(new Vector3(0, 60000+_rand.Next(30000), 0), Quaternion.CreateFromAxisAngle(Vector3.UnitZ, (rotationOffset + MathF.PI * 1.999f)));
-
-        // Data.lines[0].points = new Vector3[] {P1,P2,P3,P4,P5,P6,P7,P2};
+        float rotationOffset = 1.3f;
+        // Vector3 P1 = PaperCenter + Vector3.Transform(new Vector3(0, 60000+_rand.Next(30000), 0), Quaternion.CreateFromAxisAngle(Vector3.UnitZ, (rotationOffset + MathF.PI * 0.0f)));
+        // Vector3 P2 = PaperCenter + Vector3.Transform(new Vector3(0, 60000+_rand.Next(30000), 2000), Quaternion.CreateFromAxisAngle(Vector3.UnitZ, (rotationOffset + MathF.PI * 0.333f)));
+        // Vector3 P3 = PaperCenter + Vector3.Transform(new Vector3(0, 60000+_rand.Next(30000), 0), Quaternion.CreateFromAxisAngle(Vector3.UnitZ, (rotationOffset + MathF.PI * 0.666f)));
+        // Vector3 P4 = PaperCenter + Vector3.Transform(new Vector3(0, 60000+_rand.Next(30000), 2000), Quaternion.CreateFromAxisAngle(Vector3.UnitZ, (rotationOffset + MathF.PI * 0.999f)));
+        // Vector3 P5 = PaperCenter + Vector3.Transform(new Vector3(0, 60000+_rand.Next(30000), 0), Quaternion.CreateFromAxisAngle(Vector3.UnitZ, (rotationOffset + MathF.PI * 1.333f)));
+        // Vector3 P6 = PaperCenter + Vector3.Transform(new Vector3(0, 60000+_rand.Next(30000), 2000), Quaternion.CreateFromAxisAngle(Vector3.UnitZ, (rotationOffset + MathF.PI * 1.666f)));
+        // Vector3 P7 = PaperCenter + Vector3.Transform(new Vector3(0, 60000+_rand.Next(30000), 0), Quaternion.CreateFromAxisAngle(Vector3.UnitZ, (rotationOffset + MathF.PI * 1.999f)));
 
         List<Vector3> Points = new List<Vector3>();
-        float step = MathF.PI * 0.6f;
-        for (int i=0; i < 10; i++) {
-            Vector3 P = PaperCenter + Vector3.Transform(new Vector3(0, 100000 + 75000 * MathF.Tan(((i)/5.1f)*MathF.PI), 7000), Quaternion.CreateFromAxisAngle(Vector3.UnitZ, (rotationOffset + i * step)));
+        float step = 4.33f * MathF.PI * 0.333f;
+        for (int i=0; i < 26; i++) {
+            // Vector3 P = PaperCenter + Vector3.Transform(new Vector3(0, 150000 + 80000 * MathF.Cos((i/7.5f)*MathF.PI), 4000), Quaternion.CreateFromAxisAngle(Vector3.UnitZ, (rotationOffset + i * step)));
+            // Vector3 P = PaperCenter + Vector3.Transform(new Vector3(0, 50000 + MathF.Sin((i/22f)*2f*MathF.PI) * 1000000 * MathF.Tan((i*MathF.PI)/0.333f), 100), Quaternion.CreateFromAxisAngle(Vector3.UnitZ, (rotationOffset + i * step)));
+            Vector3 P = PaperCenter + Vector3.Transform(new Vector3(0, 130000 + MathF.Sin((i/25f)*10f*MathF.PI) * 80000,0), Quaternion.CreateFromAxisAngle(Vector3.UnitZ, (rotationOffset + i * step)));
             Points.Add(P);
-            Console.WriteLine(MathF.Cos((i/6f)*MathF.PI));
         }
+        Points[0] = Points[25];
+        // Points.Add(Points[0]);
+        Points.Add(Points[1]);
 
-        Points.RemoveAt(3);
-        Points.RemoveAt(7);
+        Points[0] = new Vector3(Points[0].X,Points[0].Y,0);
+        int last = Points.Count-1;
+        Points[last] = new Vector3(Points[last].X,Points[last].Y,0);
 
-        Points[0]=new Vector3(Points[0].X,Points[0].Y,5500);
-        Points[7]=new Vector3(Points[7].X,Points[7].Y,5500);
-        Points[3]=new Vector3(Points[3].X,Points[3].Y,5500);
-        Points[4]=new Vector3(Points[4].X,Points[4].Y,5500);
-
-        Points.Add(Points[0]);
 
 
         Vector3[] PointsArray = Points.ToArray();
 
+        for (int p=0; p<PointsArray.Length; p++) {
+            // PointsArray[p] = new Vector3(PointsArray[p].X,PointsArray[p].Y,2000 + (300000 - Vector3.Distance(PointsArray[p],PaperCenter))*0.01f);
+        }
+
         for (int p=0; p<PointsArray.Length - 1; p++) {
             Data.lines.Insert(p,new Line());
-            Data.lines[p].type=LineType.Straight;
+            Data.lines[p].type=LineType.QuadraticBezier;
             Data.lines[p].acceleration=Acceleration.Single;
-            Data.lines[p].points = new Vector3[] {PointsArray[p],PointsArray[p+1]};
+            // Vector3 pc = Vector3.Lerp(PaperCenter,pt,(float)_rand.NextDouble()+0.5f);
+            Vector3 pt;
+            Vector3 pc;
+            if (p == 19) {
+                pt = Vector3.Lerp(PointsArray[p],PointsArray[p+1],0.42f);
+                pc = Vector3.Lerp(PaperCenter,pt,2.7666f);
+            } else if (p==24) {
+                pt = Vector3.Lerp(PointsArray[p],PointsArray[p+1],0.45f);
+                pc = Vector3.Lerp(PaperCenter,pt,2.7666f);
+            } else if (p==14) {
+                pt = Vector3.Lerp(PointsArray[p],PointsArray[p+1],0.41f);
+                pc = Vector3.Lerp(PaperCenter,pt,2.7666f);
+            } else if (p==9) {
+                pt = Vector3.Lerp(PointsArray[p],PointsArray[p+1],0.4f);
+                pc = Vector3.Lerp(PaperCenter,pt,2.7666f);
+            } else if (p==4) {
+                pt = Vector3.Lerp(PointsArray[p],PointsArray[p+1],0.41f);
+                pc = Vector3.Lerp(PaperCenter,pt,2.8666f);
+            } else
+            {
+                pt = Vector3.Lerp(PointsArray[p],PointsArray[p+1],0.5f);
+                pc = Vector3.Lerp(PaperCenter,pt,2.333f);
+            }
+            pc = new Vector3(pc.X,pc.Y,PaperCenter.Z);
+            Data.lines[p].points = new Vector3[] {PointsArray[p],pc,PointsArray[p+1]};
         }
 
         // for (int i=2; i < 30; i++) {

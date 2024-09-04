@@ -5,9 +5,9 @@ using System.Collections.Generic;
 using System.Numerics;
 using Designer;
 
-public class idea003 : IGenerator {
+public class idea006 : IGenerator {
     public static Random _rand;
-    Vector3 PaperCenter = new Vector3(268800, 380160, 0);
+    Vector3 PaperCenter = new Vector3(268800, 380160, 0000);
 
     public void Generate(int seed) {
         Data.lines.Clear();
@@ -15,8 +15,7 @@ public class idea003 : IGenerator {
         _rand = new Random(seed);
 
 
-
-        float rotationOffset = -0.35f;
+        float rotationOffset = 1.3f;
         Vector3 P1 = PaperCenter + Vector3.Transform(new Vector3(0, 60000+_rand.Next(30000), 0), Quaternion.CreateFromAxisAngle(Vector3.UnitZ, (rotationOffset + MathF.PI * 0.0f)));
         Vector3 P2 = PaperCenter + Vector3.Transform(new Vector3(0, 60000+_rand.Next(30000), 2000), Quaternion.CreateFromAxisAngle(Vector3.UnitZ, (rotationOffset + MathF.PI * 0.333f)));
         Vector3 P3 = PaperCenter + Vector3.Transform(new Vector3(0, 60000+_rand.Next(30000), 0), Quaternion.CreateFromAxisAngle(Vector3.UnitZ, (rotationOffset + MathF.PI * 0.666f)));
@@ -28,23 +27,16 @@ public class idea003 : IGenerator {
         // Data.lines[0].points = new Vector3[] {P1,P2,P3,P4,P5,P6,P7,P2};
 
         List<Vector3> Points = new List<Vector3>();
-        float step = MathF.PI * 0.6f;
-        for (int i=0; i < 10; i++) {
-            Vector3 P = PaperCenter + Vector3.Transform(new Vector3(0, 100000 + 75000 * MathF.Tan(((i)/5.1f)*MathF.PI), 7000), Quaternion.CreateFromAxisAngle(Vector3.UnitZ, (rotationOffset + i * step)));
+        float step = MathF.PI * 0.5f;
+        for (int i=0; i < 24; i++) {
+            Vector3 P = PaperCenter + Vector3.Transform(new Vector3(0, 150000 + 80000 * MathF.Cos((i/7.5f)*MathF.PI), 4000), Quaternion.CreateFromAxisAngle(Vector3.UnitZ, (rotationOffset + i * step)));
             Points.Add(P);
             Console.WriteLine(MathF.Cos((i/6f)*MathF.PI));
         }
+        // Points.Add(Points[0]);
+        // Points.Add(Points[1]);
 
-        Points.RemoveAt(3);
-        Points.RemoveAt(7);
-
-        Points[0]=new Vector3(Points[0].X,Points[0].Y,5500);
-        Points[7]=new Vector3(Points[7].X,Points[7].Y,5500);
-        Points[3]=new Vector3(Points[3].X,Points[3].Y,5500);
-        Points[4]=new Vector3(Points[4].X,Points[4].Y,5500);
-
-        Points.Add(Points[0]);
-
+        Points[0] = Points[16];
 
         Vector3[] PointsArray = Points.ToArray();
 

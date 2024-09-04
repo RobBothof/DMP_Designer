@@ -28,7 +28,8 @@ namespace Designer
             byte[] bytes = FormatDrawInstruction(dtemp);
             Int32 version = 2;
             Int64 start = 60;
-            byte size = (byte)bytes.Length;
+            // byte size = (byte)bytes.Length;
+            ushort size = (ushort)bytes.Length;
 
             using (FileStream fileStream = new FileStream(path, FileMode.Create))
             {

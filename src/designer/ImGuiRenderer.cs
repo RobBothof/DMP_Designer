@@ -52,7 +52,7 @@ namespace Veldrid
             ImGui.SetCurrentContext(ImGui.CreateContext());
             ImGuiIOPtr io = ImGui.GetIO();
 
-            //Set KeyMappings
+            //Set KeyMappingsa
             io.KeyMap[(int)ImGuiKey.Tab] = (int)Key.Tab;
             io.KeyMap[(int)ImGuiKey.LeftArrow] = (int)Key.Left;
             io.KeyMap[(int)ImGuiKey.RightArrow] = (int)Key.Right;
@@ -138,8 +138,8 @@ namespace Veldrid
                 (*config).OversampleV = 4;
                 (*config).RasterizerMultiply = 1f;
                 (*config).GlyphExtraSpacing = new Vector2(1f,0f);
-                fontRegular = io.Fonts.AddFontFromFileTTF("Font/Roboto-Regular.ttf",14f,config);
-                fontBold = io.Fonts.AddFontFromFileTTF("Font/Roboto-Bold.ttf",14f,config);
+                fontRegular = io.Fonts.AddFontFromFileTTF("Font/Roboto-Regular.ttf",18f,config);
+                fontBold = io.Fonts.AddFontFromFileTTF("Font/Roboto-Bold.ttf",18f,config);
                 
                 ImGuiNative.ImFontConfig_destroy(config);
                 
@@ -179,7 +179,7 @@ namespace Veldrid
             style.Colors[(int)ImGuiCol.ChildBg]                = new Vector4(0.00f, 0.00f, 0.00f, 0.23f);
             style.Colors[(int)ImGuiCol.PopupBg]                = new Vector4(0.08f, 0.08f, 0.08f, 0.94f);
             style.Colors[(int)ImGuiCol.Border]                 = new Vector4(0.00f, 0.00f, 0.00f, 1.00f);
-            style.Colors[(int)ImGuiCol.BorderShadow]           = new Vector4(0.00f, 0.00f, 0.00f, 0.00f);
+            style.Colors[(int)ImGuiCol.BorderShadow]           = new Vector4(0.00f, 0.00f, 0.00f, 0.50f);
             style.Colors[(int)ImGuiCol.FrameBg]                = new Vector4(0.13f, 0.13f, 0.08f, 0.84f);
             style.Colors[(int)ImGuiCol.FrameBgHovered]         = new Vector4(0.18f, 0.22f, 0.18f, 0.66f);
             style.Colors[(int)ImGuiCol.FrameBgActive]          = new Vector4(0.18f, 0.22f, 0.18f, 0.66f);

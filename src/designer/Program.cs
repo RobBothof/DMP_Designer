@@ -13,6 +13,7 @@ using ImGuiNET;
 // using System.IO.Ports;
 using IniParser.Model;
 using IniParser;
+using System.Xml.Linq;
 
 // using AssetPrimitives;
 
@@ -191,10 +192,19 @@ namespace Designer
         private static bool _recreateGridLineVerticeArray = true;
 
         //
+        private static int _windowWidth = 800;
+        private static int _windowHeight = 1200;
+        private static int _windowLeft = 0;
+        private static int _windowTop = 0;
 
         private static ImGuiRenderer _imGuiRenderer;
         private static String[] scriptNames;
+        private static String[] directoryNames;
+        private static String _lastDirectory;
+        private static String _lastScript;
+
         private static int _selectedScript;
+        private static int _selectedDirectory;
 
         public  static int[] _drawSize = { 1, 1 };
         private static int[] _gridSize = { 1, 1 };
@@ -292,11 +302,47 @@ namespace Designer
             if (_iniData["Generator"]["Seed"] != null) _seed = int.Parse(_iniData["Generator"]["Seed"]);
             if (_iniData["Generator"]["UseSeed"] != null) _useRandomSeed = bool.Parse(_iniData["Generator"]["UseSeed"]);
       
-            //get list of serialports
-            // serialPortNames = SerialPort.GetPortNames();
-
+            if (_iniData["Program"]["WindowWidth"] != null) _windowWidth = int.Parse(_iniData["Program"]["WindowWidth"]);
+            if (_iniData["Program"]["WindowHeight"] != null) _windowHeight = int.Parse(_iniData["Program"]["WindowHeight"]);
+            if (_iniData["Program"]["WindowLeft"] != null) _windowLeft = int.Parse(_iniData["Program"]["WindowLeft"]);
+            if (_iniData["Program"]["WindowTop"] != null) _windowTop = int.Parse(_iniData["Program"]["WindowTop"]);
+            if (_iniData["Program"]["LastDirectory"] != null) _lastDirectory = _iniData["Program"]["LastDirectory"];
+            if (_iniData["Program"]["LastScript"] != null) _lastScript = _iniData["Program"]["LastScript"];
+      
             //get a list of script files
-            scriptNames = Directory.GetFiles("scripts", "*.cs");
+
+            directoryNames = Directory.GetDirectories("../../scripts");
+            if (directoryNames.Length > 0)
+            {
+                if (directoryNames.Contains(_lastDirectory))
+                {
+                    _selectedDirectory = Array.IndexOf(directoryNames, _lastDirectory);
+                    scriptNames = Directory.GetFiles(_lastDirectory, "*.cs");
+                }
+                else
+                {
+                    _lastDirectory = directoryNames[0];
+                    scriptNames = Directory.GetFiles(directoryNames[0], "*.cs");
+                    _selectedDirectory = 0;
+                }
+            }
+
+            if (scriptNames.Length > 0)
+            {
+                if (scriptNames.Contains(_lastScript))
+                {
+                    _selectedScript = Array.IndexOf(scriptNames, _lastScript);
+                }
+                else
+                {
+                    _lastScript = scriptNames[0];
+                    _selectedScript = 0;
+                }
+            }
+            _iniData["Program"]["LastScript"] = _lastScript;
+            _iniData["Program"]["LastDirectory"] = _lastDirectory;
+            _iniParser.WriteFile("Configuration.ini", _iniData);
+
 
             // SDL_WindowFlags.Fullscreen;
             // SDL_WindowFlags.Maximized;
@@ -308,7 +354,7 @@ namespace Designer
 
             //create Window            
             SDL_WindowFlags flags = SDL_WindowFlags.OpenGL | SDL_WindowFlags.Resizable | SDL_WindowFlags.Shown;
-            _window = new Sdl2Window("DMP Designer v0.1.0", 0, 0, 800, 1075, flags, false);
+            _window = new Sdl2Window("DMP Designer v0.1.0", _windowLeft, _windowTop, _windowWidth, _windowHeight, flags, false);
 
             Sdl2Native.SDL_ShowCursor(0);
 
@@ -511,7 +557,7 @@ namespace Designer
                     ImGui.NewFrame();
                     UpdateInput(snapshot, deltaSeconds);
 
-                    rebuildGUI();
+                    RebuildGUI();
                     ImGui.Render();
 
                     // Recreate GUI buffers.
@@ -559,6 +605,20 @@ namespace Designer
                     _graphicsDevice.SubmitCommands(_commandList);
                     _graphicsDevice.SwapBuffers();
                     _graphicsDevice.WaitForIdle();
+
+
+                    // Save window size and position
+                    if (_window.Width != _windowWidth || _window.Height != _windowHeight || _window.X != _windowLeft || _window.Y != _windowTop) {
+                        _windowWidth = _window.Width;
+                        _windowHeight = _window.Height;
+                        _windowLeft = _window.X;
+                        _windowTop = _window.Y;
+                        _iniData["Program"]["WindowWidth"] = _windowWidth.ToString();
+                        _iniData["Program"]["WindowHeight"] = _windowHeight.ToString();
+                        _iniData["Program"]["WindowLeft"] = _windowLeft.ToString();
+                        _iniData["Program"]["WindowTop"] = _windowTop.ToString();
+                        _iniParser.WriteFile("Configuration.ini", _iniData);
+                    }
 
                     previousTime = newTime;
                 }
@@ -613,28 +673,30 @@ namespace Designer
 
         private static void Generate()
         {
-            if (File.Exists(scriptNames[_selectedScript]))
-            {
-                // Conpile and run script
-                if (!_useRandomSeed)
+            if (scriptNames.Length > 0) {
+                if (File.Exists(scriptNames[_selectedScript]))
                 {
-                    _seed = new Random().Next();
-                    _iniData["Generator"]["Seed"] = _seed.ToString();
-                    _iniParser.WriteFile("Configuration.ini", _iniData);                    
+                    // Conpile and run script
+                    if (!_useRandomSeed)
+                    {
+                        _seed = new Random().Next();
+                        _iniData["Generator"]["Seed"] = _seed.ToString();
+                        _iniParser.WriteFile("Configuration.ini", _iniData);                    
+                    }
+                    if (_compiler.CompileAndRun(scriptNames[_selectedScript], _seed) == 1)
+                    {
+                        Console.WriteLine("Script executed succesfully.");
+                        Data.DebugConsole.Add(("Script executed succesfully."));
+                    }
+                    else
+                    {
+                        Console.WriteLine("Script execution failed..");
+                        Data.DebugConsole.Add(("Script execution failed.."));
+                    }
+                    _recreateDotVerticeArray = true;
+                    _recreateLineVerticeArray = true;
+                    _recreateDepthVerticeArray = true;
                 }
-                if (_compiler.CompileAndRun(scriptNames[_selectedScript], _seed) == 1)
-                {
-                    Console.WriteLine("Script executed succesfully.");
-                    Data.DebugConsole.Add(("Script executed succesfully."));
-                }
-                else
-                {
-                    Console.WriteLine("Script execution failed..");
-                    Data.DebugConsole.Add(("Script execution failed.."));
-                }
-                _recreateDotVerticeArray = true;
-                _recreateLineVerticeArray = true;
-                _recreateDepthVerticeArray = true;
             }
         }
 
@@ -1233,11 +1295,11 @@ namespace Designer
             }
         }
 
-        private static void rebuildGUI()
+        private static void RebuildGUI()
         {
-            ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
-            ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
-            ImGui.PushStyleColor(ImGuiCol.HeaderActive, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
+            // ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0.75f, 0.75f, 0.75f, 1.00f));
+            // ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new Vector4(0.75f, 0.75f, 0.75f, 1.00f));
+            // ImGui.PushStyleColor(ImGuiCol.HeaderActive, new Vector4(0.75f, 0.75f, 0.75f, 1.00f));
             if (ImGui.BeginMainMenuBar())
             {
                 if (ImGui.BeginMenu("File"))
@@ -1263,9 +1325,9 @@ namespace Designer
                 }
                 ImGui.EndMenuBar();
             }
-            ImGui.PopStyleColor();
-            ImGui.PopStyleColor();
-            ImGui.PopStyleColor();
+            // ImGui.PopStyleColor();
+            // ImGui.PopStyleColor();
+            // ImGui.PopStyleColor();
 
             if (_showImGuiDemoWindow)
             {
@@ -1277,9 +1339,10 @@ namespace Designer
 
             if (_showSettingsWindow)
             {
-                ImGui.SetNextWindowPos(new Vector2(_window.Width - 275f, 20f));
-                ImGui.SetNextWindowSize(new Vector2(275f, _window.Height - 30f));
-                ImGui.Begin("Settings", ref _showSettingsWindow, ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoResize);
+                // ImGui.SetNextWindowPos(new Vector2(_window.Width - 275f, 20f));
+                ImGui.SetNextWindowPos(new Vector2(0, 20f));
+                ImGui.SetNextWindowSize(new Vector2(316f, _window.Height - 20f));
+                ImGui.Begin("Settings", ref _showSettingsWindow, ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoTitleBar);
 
                 ImGui.PushStyleColor(ImGuiCol.Text, textcolor2);
                 ImGui.PushFont(_imGuiRenderer.fontBold);
@@ -1300,7 +1363,7 @@ namespace Designer
 
                     ImGui.Text("Clear color:");
                     ImGui.SameLine();
-                    ImGui.Dummy(new Vector2(52, 0));
+                    ImGui.Dummy(new Vector2(73, 0));
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(130);
                     if (ImGui.ColorEdit3("##clearcol", ref _clearColor))
@@ -1314,7 +1377,7 @@ namespace Designer
 
                     ImGui.Text("Draw color:");
                     ImGui.SameLine();
-                    ImGui.Dummy(new Vector2(53, 0));
+                    ImGui.Dummy(new Vector2(74, 0));
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(130);
                     if (ImGui.ColorEdit3("##drawcol", ref _drawColor))
@@ -1328,7 +1391,7 @@ namespace Designer
 
                     ImGui.Text("Base width (mm):");
                     ImGui.SameLine();
-                    ImGui.Dummy(new Vector2(15, 0));
+                    ImGui.Dummy(new Vector2(26, 0));
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(130);
                     if (ImGui.DragFloat("##line", ref _linewidth, 0.1f, 0.0f, 70.0f))
@@ -1344,7 +1407,7 @@ namespace Designer
 
                     ImGui.Text("Grid color:");
                     ImGui.SameLine();
-                    ImGui.Dummy(new Vector2(60, 0));
+                    ImGui.Dummy(new Vector2(82, 0));
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(130);
                     if (ImGui.SliderFloat("##gridcol", ref _gridIntensity, 0, 1))
@@ -1356,7 +1419,7 @@ namespace Designer
 
                     ImGui.Text("Size (mm):");
                     ImGui.SameLine();
-                    ImGui.Dummy(new Vector2(58, 0));
+                    ImGui.Dummy(new Vector2(80, 0));
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(130);
                     if (ImGui.DragInt2("##drawsize", ref _drawSize[0], 1, 1, 1500))
@@ -1369,7 +1432,7 @@ namespace Designer
 
                     ImGui.Text("Grid:");
                     ImGui.SameLine();
-                    ImGui.Dummy(new Vector2(96, 0));
+                    ImGui.Dummy(new Vector2(127, 0));
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(130);
                     if (ImGui.DragInt2("##gridsub", ref _gridSize[0], 1, 1, 1500))
@@ -1384,7 +1447,7 @@ namespace Designer
                     ImGui.Spacing();
                     ImGui.Text("Border color:");
                     ImGui.SameLine();
-                    ImGui.Dummy(new Vector2(43, 0));
+                    ImGui.Dummy(new Vector2(63, 0));
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(130);
                     if (ImGui.ColorEdit3("##bordercol", ref _borderColor))
@@ -1398,7 +1461,7 @@ namespace Designer
 
                     ImGui.Text("Border width (mm):");
                     ImGui.SameLine();
-                    ImGui.Dummy(new Vector2(5, 0));
+                    ImGui.Dummy(new Vector2(15, 0));
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(130);
                     if (ImGui.DragFloat("##borderwidth", ref _borderWidth, 1.0f, 1.0f, 200.0f))
@@ -1412,7 +1475,7 @@ namespace Designer
                     ImGui.Spacing();
                     ImGui.Text("Depth color:");
                     ImGui.SameLine();
-                    ImGui.Dummy(new Vector2(48, 0));
+                    ImGui.Dummy(new Vector2(70, 0));
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(130);                    
                     if (ImGui.SliderFloat("##depthcol", ref _depthIntensity, 0, 1))
@@ -1455,12 +1518,13 @@ namespace Designer
                     }
                     ImGui.Spacing();
 
+                    ImGui.Dummy(new Vector2(4,4));
                     ImGui.Text("Position (px) ");
                     ImGui.SameLine();
-                    ImGui.Dummy(new Vector2(66, 0));
+                    ImGui.Dummy(new Vector2(86,26));
                     ImGui.SameLine();
-                    ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 2f);
-                    if (ImGui.Button("center", new Vector2(104, 20)))
+                    ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 0f);
+                    if (ImGui.Button("center", new Vector2(104, 24)))
                     {
                         _cameraPosition = new Vector2(_drawSize[0] * (Data.stepsPerMM * 0.5f), _drawSize[1] * (Data.stepsPerMM * 0.5f));
                         _iniData["Camera"]["PosX"] = _cameraPosition.X.ToString();
@@ -1471,7 +1535,7 @@ namespace Designer
                     ImGui.PopStyleVar();
 
 
-                    ImGui.SetNextItemWidth(262.0f);
+                    ImGui.SetNextItemWidth(300.0f);
                     if (ImGui.DragFloat2("##_camPos", ref _cameraPosition))
                     {
                         _iniData["Camera"]["PosX"] = _cameraPosition.X.ToString();
@@ -1482,14 +1546,14 @@ namespace Designer
                     ImGui.Spacing();
 
                     ImGui.Text("Rotation                      Zoom");
-                    ImGui.SetNextItemWidth(129.0f);
+                    ImGui.SetNextItemWidth(149.0f);
                     if (ImGui.DragFloat("##_camRot", ref _cameraRotation))
                     {
                         _iniData["Camera"]["Rotation"] = _cameraRotation.ToString();
                         _iniParser.WriteFile("Configuration.ini", _iniData);
                     }
                     ImGui.SameLine();
-                    ImGui.SetNextItemWidth(129.0f);
+                    ImGui.SetNextItemWidth(149.0f);
                     if (ImGui.SliderInt("##_camZoom2", ref _zoom, 0, _zoomlevels.Count() - 1, _zoomlevels[_zoom].ToString() + "%%"))
                     {
                         _iniData["Camera"]["Zoom"] = _zoom.ToString();
@@ -1497,6 +1561,7 @@ namespace Designer
                     }
                     ImGui.Spacing();
                     ImGui.Spacing();
+                    ImGui.Dummy(new Vector2(4,4));
 
                     ImGui.PopStyleColor();
                     ImGui.PopFont();
@@ -1529,33 +1594,128 @@ namespace Designer
                         _iniData["Header"]["Generator"] = "true";
                         _iniParser.WriteFile("Configuration.ini", _iniData);
                     }
+                    ImGui.Dummy(new Vector2(4,4));
 
                     ImGui.Spacing();
                     ImGui.Text("Script");
                     ImGui.SameLine();
-                    ImGui.Dummy(new Vector2(112, 0));
+                    ImGui.Dummy(new Vector2(142, 0));
                     ImGui.SameLine();
                     ImGui.SameLine();
                     ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 2f);
-                    if (ImGui.Button("refresh##scriptfiles", new Vector2(104f, 20f)))
+                    if (ImGui.Button("refresh##scriptfiles", new Vector2(104f, 24f)))
                     {
-                        scriptNames = Directory.GetFiles("scripts", "*.cs");
+                        directoryNames = Directory.GetDirectories("../../scripts");
+                        if (directoryNames.Length > 0)
+                        {
+                            if (directoryNames.Contains(_lastDirectory))
+                            {
+                                _selectedDirectory = Array.IndexOf(directoryNames, _lastDirectory);
+                                scriptNames = Directory.GetFiles(_lastDirectory, "*.cs");
+                            }
+                            else
+                            {
+                                _lastDirectory = directoryNames[0];
+                                scriptNames = Directory.GetFiles(directoryNames[0], "*.cs");
+                                _selectedDirectory = 0;
+                           
+                            }
+                        }
+
+                        if (scriptNames.Length > 0)
+                        {
+                            if (scriptNames.Contains(_lastScript))
+                            {
+                                _selectedScript = Array.IndexOf(scriptNames, _lastScript);
+                            }
+                            else
+                            {
+                                _lastScript = scriptNames[0];
+                                _selectedScript = 0;
+                            }
+                        }                        
+                        // scriptNames = Directory.GetFiles("../../scripts", "*.cs");
                     }
                     ImGui.PopStyleVar();
 
-                    if (scriptNames.Count() > 0)
+                    ImGui.Dummy(new Vector2(4,4));
+
+                    if (directoryNames.Length > 0)
                     {
                         ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
                         ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
                         ImGui.PushStyleColor(ImGuiCol.HeaderActive, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
-                        ImGui.PushItemWidth(260);
-                        if (ImGui.BeginCombo("##comboscriptfiles", scriptNames[_selectedScript].Split("scripts/")[1]))
+
+                        ImGui.PushItemWidth(300);
+                        if (ImGui.BeginCombo("##comboscriptdirs", directoryNames[_selectedDirectory].Split("scripts/")[1], ImGuiComboFlags.HeightLargest))
+                        {
+                            for (int n = 0; n < directoryNames.Length; n++)
+                            {
+                                bool is_selected = (directoryNames[_selectedDirectory] == directoryNames[n]); // You can store your selection however you want, outside or inside your objects
+                                if (ImGui.Selectable(directoryNames[n].Split("scripts/")[1], is_selected))
+                                    _selectedDirectory = n;
+                                    
+                                    if (Directory.Exists(directoryNames[_selectedDirectory])) { 
+                                        scriptNames = Directory.GetFiles(directoryNames[_selectedDirectory], "*.cs");
+
+                                        if (scriptNames.Length > 0)
+                                        {
+                                            if (scriptNames.Contains(_lastScript))
+                                            {
+                                                _selectedScript = Array.IndexOf(scriptNames, _lastScript);
+                                            }
+                                            else
+                                            {
+                                                _selectedScript = 0;
+                                            }
+                                            _lastScript = scriptNames[_selectedScript];
+                                            _iniData["Program"]["LastScript"] = scriptNames[_selectedScript];
+                                        }
+                                    }
+                                    _lastDirectory= directoryNames[_selectedDirectory];
+                                    _iniData["Program"]["LastDirectory"] = directoryNames[_selectedDirectory];
+                                    _iniParser.WriteFile("Configuration.ini", _iniData);
+                                if (is_selected)
+                                {
+                                    ImGui.SetItemDefaultFocus();   // You may set the initial focus when opening the combo (scrolling + for keyboard navigation support)
+                                }
+                            }
+                            ImGui.EndCombo();
+                        }
+                        ImGui.PopItemWidth();
+                        ImGui.PopStyleColor();
+                        ImGui.PopStyleColor();
+                        ImGui.PopStyleColor();
+                    }
+                    else
+                    {
+                        ImGui.AlignTextToFramePadding();
+                        ImGui.Text("No script folders found.");
+                        ImGui.SameLine();
+                        ImGui.Dummy(new Vector2(109f, 0f));
+                    }
+                    // ---
+
+                    ImGui.Dummy(new Vector2(4,4));
+
+                    if (scriptNames.Length > 0)
+                    {
+                        ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
+                        ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
+                        ImGui.PushStyleColor(ImGuiCol.HeaderActive, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
+
+                        // TODO Add Script Folder
+                        ImGui.PushItemWidth(300);
+                        if (ImGui.BeginCombo("##comboscriptfiles", scriptNames[_selectedScript].Split("/").Last<String>(), ImGuiComboFlags.HeightLargest))
                         {
                             for (int n = 0; n < scriptNames.Count(); n++)
                             {
                                 bool is_selected = (scriptNames[_selectedScript] == scriptNames[n]); // You can store your selection however you want, outside or inside your objects
-                                if (ImGui.Selectable(scriptNames[n].Split("scripts/")[1], is_selected))
+                                if (ImGui.Selectable(scriptNames[n].Split("/").Last<String>(), is_selected))
                                     _selectedScript = n;
+                                    _lastScript = scriptNames[_selectedScript];                             
+                                    _iniData["Program"]["LastScript"] = scriptNames[_selectedScript];
+                                    _iniParser.WriteFile("Configuration.ini", _iniData);                                    
                                 if (is_selected)
                                 {
                                     ImGui.SetItemDefaultFocus();   // You may set the initial focus when opening the combo (scrolling + for keyboard navigation support)
@@ -1576,15 +1736,16 @@ namespace Designer
                         ImGui.Dummy(new Vector2(109f, 0f));
                     }
 
+                    ImGui.Dummy(new Vector2(4,20));
                     ImGui.Spacing();
 
-                    ImGui.SetNextItemWidth(160);
+                    ImGui.SetNextItemWidth(180);
                     if (ImGui.DragInt("##RandomSeed", ref _seed)) {
                         _iniData["Generator"]["Seed"] = _seed.ToString();
                         _iniParser.WriteFile("Configuration.ini", _iniData);
                     };
                     ImGui.SameLine();
-                    ImGui.Dummy(new Vector2(5f, 0f));
+                    ImGui.Dummy(new Vector2(10f, 0f));
                     ImGui.SameLine();
                     if (ImGui.Checkbox(" Use Seed", ref _useRandomSeed)) {
                         _iniData["Generator"]["UseSeed"] = _useRandomSeed.ToString();
@@ -1593,9 +1754,9 @@ namespace Designer
 
                     ImGui.Spacing();
                     // ImGui.Dummy(new Vector2(0f, 10f));
-
+                    ImGui.Dummy(new Vector2(4,4));
                     ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 2f);
-                    if (ImGui.Button("compile and generate", new Vector2(260, 22)))
+                    if (ImGui.Button("compile and generate", new Vector2(300, 24)))
                     {
                         Generate();
                     }
@@ -1605,21 +1766,23 @@ namespace Designer
                     ImGui.Text("File export");
 
                     ImGui.Spacing();
-                    ImGui.SetNextItemWidth(260f);
+                    ImGui.SetNextItemWidth(300f);
                     if (ImGui.InputText("##expfilepath", ref _exportfilepath, 80))
                     {
                         _iniData["Generator"]["FilePath"] = _exportfilepath;
                         _iniParser.WriteFile("Configuration.ini", _iniData);
                     };
-                    ImGui.SetNextItemWidth(260f);
+                    ImGui.SetNextItemWidth(300f);
                     if (ImGui.InputText("##expfilename", ref _exportfilename, 80))
                     {
                         _iniData["Generator"]["FileName"] = _exportfilename;
                         _iniParser.WriteFile("Configuration.ini", _iniData);
                     };
 
+                    ImGui.Dummy(new Vector2(4, 4f));
+
                     ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 2f);
-                    if (ImGui.Button("choose file", new Vector2(100, 22)))
+                    if (ImGui.Button("choose file", new Vector2(120, 24)))
                     {
                         List<String> outputs = new List<string>();
                         string arg = " --getsavefilename ";
@@ -1662,7 +1825,7 @@ namespace Designer
                     ImGui.SameLine();
                     ImGui.Dummy(new Vector2(54, 0));
                     ImGui.SameLine();
-                    if (ImGui.Button("export file", new Vector2(100, 22)))
+                    if (ImGui.Button("export file", new Vector2(120, 24)))
                     {
                         if (_exportfilename.Length > 0)
                         {
@@ -1682,9 +1845,8 @@ namespace Designer
                             Data.DebugConsole.Add("No filename specified.");
                         }
                     }
-
                     ImGui.PopStyleVar();
-
+                    ImGui.Dummy(new Vector2(4, 4f));
                     ImGui.PopFont();
                     ImGui.Spacing();
                     ImGui.Spacing();
