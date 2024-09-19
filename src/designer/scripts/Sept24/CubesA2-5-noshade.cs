@@ -8,7 +8,7 @@ using System.Diagnostics;
 using MathNet.Numerics;
 using System.Runtime.CompilerServices;
 
-public class CubesLive : IGenerator
+public class CubesA2_5_noshade : IGenerator
 {
     public static Random _rand;
     Vector3 PaperCenter = new Vector3(268800, 380160, 0);
@@ -28,6 +28,7 @@ public class CubesLive : IGenerator
 
     public int Shade2(Vector3 normal, float size)
     {
+            return 0;
         // return (int)((Math.Max(0,Vector3.Dot(normal,SpotLight)))*(Math.Max(0,Vector3.Dot(normal,SpotLight)))*3);
         if (Vector3.Dot(normal, SpotLight) > 0.6)
         {

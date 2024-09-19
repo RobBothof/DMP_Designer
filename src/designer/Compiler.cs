@@ -21,9 +21,10 @@ namespace Designer {
             }
         }
 
-        public int CompileAndRun(String path, int seed=-1) {
-            // Data.DebugConsole.Add("Compiling:");
-            // Data.DebugConsole.Add(path);
+        public int CompileAndRun(String path, int seed=-1) {                       
+            Console.WriteLine("Compiling script.");
+            Data.DebugConsole.Add(("Compiling script."));
+
             FileStream source = File.OpenRead(path);
             SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(SourceText.From(source), path: path);
             source.Dispose();
@@ -53,6 +54,10 @@ namespace Designer {
                 } else {
                     ms.Seek(0, SeekOrigin.Begin);
                     Type type = Assembly.Load(ms.ToArray()).GetType(className);
+
+                    Console.WriteLine("Executing script.");
+                    Data.DebugConsole.Add(("Executing script."));
+
                     type.InvokeMember("Generate",BindingFlags.Default | BindingFlags.InvokeMethod,null,Activator.CreateInstance(type),new object[] {seed});
                 }
             }

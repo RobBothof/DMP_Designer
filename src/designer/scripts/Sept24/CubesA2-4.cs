@@ -8,13 +8,13 @@ using System.Diagnostics;
 using MathNet.Numerics;
 using System.Runtime.CompilerServices;
 
-public class CubesLive : IGenerator
+public class CubesA2_4 : IGenerator
 {
     public static Random _rand;
     Vector3 PaperCenter = new Vector3(268800, 380160, 0);
     // public float shadeStep=0.15f;
 
-    public Vector3 SpotLight = new Vector3(-10.0f, 0f, -10f);
+    public Vector3 SpotLight = new Vector3(15f, -0f, 0.25f);
 
     public Vector3 interpolate(Vector3 A, Vector3 B, float t)
     {
@@ -533,7 +533,7 @@ public class CubesLive : IGenerator
 
         _rand = new Random(seed);
        
-        _rand = new Random(1736477421);
+        _rand = new Random(872082698);
 
         // for (int i = 0; i < 35; i++) 
         // {
@@ -554,46 +554,9 @@ public class CubesLive : IGenerator
 
         for (int i = 0; i < 77; i++)
         {
-            if (i==17)
-            {
-                    Cube(new Vector3(_rand.NextSingle()*210-90, _rand.NextSingle()*300-160, -850), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(0.0f,1f,0f)), 0.4f));
-            } else {
-            if (i==25)
-            {
-                Cube(new Vector3(_rand.NextSingle()*210-115, _rand.NextSingle()*300-150, -850), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(0.0f,1f,0f)), 0.4f));
-            } else {
-            if (i==29)
-            {
-                Cube(new Vector3(_rand.NextSingle()*210-95, _rand.NextSingle()*300-150, -850), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(0.0f,1f,0f)), 0.4f));
-            } else {
-            if (i==0) {
-                    Cube(new Vector3(_rand.NextSingle()*210-90, _rand.NextSingle()*300-150, -850), _rand.NextSingle() * 30 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(0.0f,1f,0f)), 0.4f));
-            } else {
-            if (i==27) {
-                    Cube(new Vector3(_rand.NextSingle()*210-90, _rand.NextSingle()*300-150, -850), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(0.0f,1f,0f)), 0.4f));
-            } else {
-            if (i==63) {
-                    Cube(new Vector3(_rand.NextSingle()*210-105, _rand.NextSingle()*300-250, -850), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(0.0f,1f,0f)), 0.4f));
-            } else {
-            if (i==12)
-            {
-                Cube(new Vector3(_rand.NextSingle()*210-105, _rand.NextSingle()*300-142, -850), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(0.0f,1f,0f)), 0.4f));
-            } else {
-                if (i==32)
-                {
-                    Cube(new Vector3(_rand.NextSingle()*210-80, _rand.NextSingle()*300-140, -850), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(0.0f,1f,0f)), 0.4f));
-                } else
-                {
-                    Cube(new Vector3(_rand.NextSingle()*210-105, _rand.NextSingle()*300-150, -850), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(0.0f,1f,0f)), 0.4f));
-                }
-            }
-            }
-            }
-            }
-            }
-            }}
             // Cube(new Vector3(_rand.NextSingle()*210-105, _rand.NextSingle()*300-150, -750), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(_rand.NextSingle(), _rand.NextSingle(), _rand.NextSingle())), (float)Math.PI * 2 * _rand.NextSingle()));
             // Cube(new Vector3(_rand.NextSingle()*210-105, _rand.NextSingle()*300-150, -750), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(1,0,0)), (float)Math.PI * 2 * _rand.NextSingle()));
+            Cube(new Vector3(_rand.NextSingle()*210-105, _rand.NextSingle()*300-150, -850), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(0,0.1f,1)), (float)Math.PI * 2 * _rand.NextSingle()));
         }
 
 

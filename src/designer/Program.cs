@@ -110,11 +110,15 @@ namespace Designer
     public static class Data
     {
         public const int stepsPerMM = 1280;
+        public const int rasterPixelsPerStep = 256;
+        public const uint rasterWidth  = 420 * ( 1280 / rasterPixelsPerStep ); // depthmap uses 1 pixel per 20 steps for A2 paper size
+        public const uint rasterHeight = 594 * ( 1280 / rasterPixelsPerStep ); // keep texture size around 2GB: 420 x 594 x (1280/20) x (1280/20) = 1.021.870.080 * 2 bytes for uint16
         public static List<Line> lines = new List<Line>();
         public static List<Dot> dots = new List<Dot>();
-        public static List<String> DebugConsole = new List<string>();
+        public static List<string> DebugConsole = new List<string>();
         public static List<Line> gridLines = new List<Line>();
-        public static UInt16[] depthMap = new UInt16[2*8*stepsPerMM*2*12*stepsPerMM]; // 20480 x 30720        
+        public static ushort[] depthMap = new ushort[rasterWidth*rasterHeight];       
+        public static ushort[] shadowMap = new ushort[rasterWidth*rasterHeight];       
     }
 
     struct DotVertex
@@ -135,6 +139,13 @@ namespace Designer
     }
 
     struct DepthVertex
+    {
+        public Vector2 Position;
+        public Vector2 TexCoords;
+        public float Alpha;
+    }
+
+    struct ShadowVertex
     {
         public Vector2 Position;
         public Vector2 TexCoords;
@@ -172,6 +183,17 @@ namespace Designer
 
         private static float _depthIntensity = 0.5f;
 
+        // prewview of ShadowBuffer
+
+        private static Texture _shadowTexture;
+        private static TextureView _shadowTextureView;
+        private static ResourceSet _shadowTextureSet;
+
+        private static DeviceBuffer _shadowVertexBuffer;
+        private static Shader[] _shadowShaders;
+        private static Pipeline _shadowPipeline;
+        private static bool _recreateShadowVerticeArray = true;
+        private static float _shadowIntensity = 0.5f;
 
         // drawtype: Line
         private static DeviceBuffer _lineVertexBuffer;
@@ -296,6 +318,7 @@ namespace Designer
             if (_iniData["Grid"]["Intensity"] != null) _gridIntensity = float.Parse(_iniData["Grid"]["Intensity"]);
 
             if (_iniData["Depth"]["Intensity"] != null) _depthIntensity = float.Parse(_iniData["Depth"]["Intensity"]);
+            if (_iniData["Shadow"]["Intensity"] != null) _shadowIntensity = float.Parse(_iniData["Shadow"]["Intensity"]);
 
             if (_iniData["Generator"]["FilePath"] != null) _exportfilepath = _iniData["Generator"]["FilePath"];
             if (_iniData["Generator"]["FileName"] != null) _exportfilename = _iniData["Generator"]["FileName"];
@@ -311,7 +334,7 @@ namespace Designer
       
             //get a list of script files
 
-            directoryNames = Directory.GetDirectories("../../scripts");
+            directoryNames = Directory.GetDirectories("scripts");
             if (directoryNames.Length > 0)
             {
                 if (directoryNames.Contains(_lastDirectory))
@@ -505,20 +528,20 @@ namespace Designer
             );
             //load Shaders
             _depthShaders = factory.CreateFromSpirv(new ShaderDescription(ShaderStages.Vertex, File.ReadAllBytes("Shaders/depth_shader-vert.glsl"), "main"), new ShaderDescription(ShaderStages.Fragment, File.ReadAllBytes("Shaders/depth_shader-frag.glsl"), "main"));
-            _depthTexture = factory.CreateTexture(TextureDescription.Texture2D((uint) (2*8*Data.stepsPerMM), (uint) (2*12*Data.stepsPerMM), 1, 1, PixelFormat.R16_UNorm, TextureUsage.Sampled));
+            _depthTexture = factory.CreateTexture(TextureDescription.Texture2D(Data.rasterWidth, Data.rasterHeight, 1, 1, PixelFormat.R16_UNorm, TextureUsage.Sampled));
             _depthTextureView = factory.CreateTextureView(_depthTexture);
 
             // Array.Clear(Data.depthMap,0,Data.depthMap.Length);
-            Array.Fill(Data.depthMap,UInt16.MaxValue);
+            Array.Fill(Data.depthMap, ushort.MaxValue);
 
-            _graphicsDevice.UpdateTexture<UInt16>(_depthTexture, Data.depthMap, 0, 0, 0, (uint) (2*8*Data.stepsPerMM), (uint) (2*12*Data.stepsPerMM), 1, 0, 0);
+            _graphicsDevice.UpdateTexture<UInt16>(_depthTexture, Data.depthMap, 0, 0, 0, Data.rasterWidth, Data.rasterHeight, 1, 0, 0);
 
-            ResourceLayout worldTextureLayout = factory.CreateResourceLayout(new ResourceLayoutDescription(
+            ResourceLayout depthTextureLayout = factory.CreateResourceLayout(new ResourceLayoutDescription(
                     new ResourceLayoutElementDescription("SurfaceTexture", ResourceKind.TextureReadOnly, ShaderStages.Fragment),
                     new ResourceLayoutElementDescription("SurfaceSampler", ResourceKind.Sampler, ShaderStages.Fragment)
             ));
 
-            _depthTextureSet = factory.CreateResourceSet(new ResourceSetDescription(worldTextureLayout, _depthTextureView, _graphicsDevice.PointSampler));
+            _depthTextureSet = factory.CreateResourceSet(new ResourceSetDescription(depthTextureLayout, _depthTextureView, _graphicsDevice.PointSampler));
 
             //describe graphics pipeline
             GraphicsPipelineDescription depthPipelineDescription = new GraphicsPipelineDescription();
@@ -530,8 +553,50 @@ namespace Designer
             depthPipelineDescription.ShaderSet = new ShaderSetDescription(vertexLayouts: new VertexLayoutDescription[] { depthVertexBufferLayout }, shaders: _depthShaders);
 
             //add resource sets: general viewport and optional rendertype specific
-            depthPipelineDescription.ResourceLayouts = new[] { viewportResourceLayout, worldTextureLayout };
+            depthPipelineDescription.ResourceLayouts = new[] { viewportResourceLayout, depthTextureLayout };
             _depthPipeline = factory.CreateGraphicsPipeline(depthPipelineDescription);
+
+            //// ------------------- ShadowBuffer ------------------------- ////
+
+            //create a vertex buffer
+            _shadowVertexBuffer = factory.CreateBuffer(new BufferDescription(0 * 20, BufferUsage.VertexBuffer));
+            _graphicsDevice.UpdateBuffer(_shadowVertexBuffer, 0, new LineVertex[0]);
+
+            //describe the data layout
+            VertexLayoutDescription shadowVertexBufferLayout = new VertexLayoutDescription(
+                new VertexElementDescription("Position", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2),
+                new VertexElementDescription("TexCoords", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2),
+                new VertexElementDescription("Alpha", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float1)
+            );
+            //load Shaders
+            _shadowShaders = factory.CreateFromSpirv(new ShaderDescription(ShaderStages.Vertex, File.ReadAllBytes("Shaders/shadow_shader-vert.glsl"), "main"), new ShaderDescription(ShaderStages.Fragment, File.ReadAllBytes("Shaders/depth_shader-frag.glsl"), "main"));
+            _shadowTexture = factory.CreateTexture(TextureDescription.Texture2D(Data.rasterWidth, Data.rasterHeight, 1, 1, PixelFormat.R16_UNorm, TextureUsage.Sampled));
+            _shadowTextureView = factory.CreateTextureView(_shadowTexture);
+
+
+            Array.Fill(Data.shadowMap, ushort.MaxValue);
+
+            _graphicsDevice.UpdateTexture<UInt16>(_shadowTexture, Data.shadowMap, 0, 0, 0, Data.rasterWidth, Data.rasterHeight, 1, 0, 0);
+
+            ResourceLayout shadowTextureLayout = factory.CreateResourceLayout(new ResourceLayoutDescription(
+                new ResourceLayoutElementDescription("SurfaceTexture", ResourceKind.TextureReadOnly, ShaderStages.Fragment),
+                new ResourceLayoutElementDescription("SurfaceSampler", ResourceKind.Sampler, ShaderStages.Fragment)
+            ));
+
+            _shadowTextureSet = factory.CreateResourceSet(new ResourceSetDescription(shadowTextureLayout, _shadowTextureView, _graphicsDevice.PointSampler));
+
+            //describe graphics pipeline
+            GraphicsPipelineDescription shadowPipelineDescription = new GraphicsPipelineDescription();
+            shadowPipelineDescription.Outputs = _graphicsDevice.MainSwapchain.Framebuffer.OutputDescription;
+            shadowPipelineDescription.BlendState = BlendStateDescription.SingleAlphaBlend;
+            shadowPipelineDescription.DepthStencilState = new DepthStencilStateDescription(depthTestEnabled: true, depthWriteEnabled: true, comparisonKind: ComparisonKind.LessEqual);
+            shadowPipelineDescription.RasterizerState = new RasterizerStateDescription(cullMode: FaceCullMode.Back, fillMode: PolygonFillMode.Solid, frontFace: FrontFace.Clockwise, depthClipEnabled: true, scissorTestEnabled: true);
+            shadowPipelineDescription.PrimitiveTopology = PrimitiveTopology.TriangleStrip;
+            shadowPipelineDescription.ShaderSet = new ShaderSetDescription(vertexLayouts: new VertexLayoutDescription[] { shadowVertexBufferLayout }, shaders: _shadowShaders);
+
+            //add resource sets: general viewport and optional rendertype specific
+            shadowPipelineDescription.ResourceLayouts = new[] { viewportResourceLayout, shadowTextureLayout };
+            _shadowPipeline = factory.CreateGraphicsPipeline(shadowPipelineDescription);
 
             //// ------------------- Init ------------------------- ////
 
@@ -590,9 +655,11 @@ namespace Designer
                     UpdateLineGeometry();
                     UpdateDotGeometry();
                     UpdateDepthGeometry();
+                    UpdateShadowGeometry();
 
                     DrawGridLines();
                     DrawDepthBuffer();
+                    DrawShadowBuffer();
                     DrawLines();
                     DrawDots();
 
@@ -655,6 +722,15 @@ namespace Designer
                 shader.Dispose();
             }
 
+            _shadowTexture.Dispose();
+            _shadowTextureView.Dispose();
+            _shadowPipeline.Dispose();
+            _shadowVertexBuffer.Dispose();
+            foreach (Shader shader in _shadowShaders)
+            {
+                shader.Dispose();
+            }
+
             _cameraBuffer.Dispose();
             _projectionBuffer.Dispose();
             _rotationBuffer.Dispose();
@@ -676,6 +752,7 @@ namespace Designer
             if (scriptNames.Length > 0) {
                 if (File.Exists(scriptNames[_selectedScript]))
                 {
+
                     // Conpile and run script
                     if (!_useRandomSeed)
                     {
@@ -683,6 +760,10 @@ namespace Designer
                         _iniData["Generator"]["Seed"] = _seed.ToString();
                         _iniParser.WriteFile("Configuration.ini", _iniData);                    
                     }
+
+                    // Start the stopwatch
+                    Stopwatch stopwatch = Stopwatch.StartNew();
+                                        
                     if (_compiler.CompileAndRun(scriptNames[_selectedScript], _seed) == 1)
                     {
                         Console.WriteLine("Script executed succesfully.");
@@ -693,9 +774,18 @@ namespace Designer
                         Console.WriteLine("Script execution failed..");
                         Data.DebugConsole.Add(("Script execution failed.."));
                     }
+
+                    // Stop the stopwatch
+                    stopwatch.Stop();
+                    TimeSpan elapsed = stopwatch.Elapsed;
+                    Console.WriteLine($"Total time: {elapsed.Hours}h {elapsed.Minutes}m {elapsed.Seconds}s {elapsed.Milliseconds}ms");
+                    Data.DebugConsole.Add($"Total time: {elapsed.Hours}h {elapsed.Minutes}m {elapsed.Seconds}s {elapsed.Milliseconds}ms");
+
+
                     _recreateDotVerticeArray = true;
                     _recreateLineVerticeArray = true;
                     _recreateDepthVerticeArray = true;
+                    _recreateShadowVerticeArray = true;
                 }
             }
         }
@@ -919,10 +1009,52 @@ namespace Designer
                 _depthVertexBuffer = _graphicsDevice.ResourceFactory.CreateBuffer(new BufferDescription(4 * 20, BufferUsage.VertexBuffer));
                 _graphicsDevice.UpdateBuffer(_depthVertexBuffer, 0, depthVertices.ToArray());
 
-                _graphicsDevice.UpdateTexture<UInt16>(_depthTexture, Data.depthMap, 0, 0, 0, (uint)(2*8*Data.stepsPerMM), (uint) (2*12*Data.stepsPerMM), 1, 0, 0);
+                _graphicsDevice.UpdateTexture<UInt16>(_depthTexture, Data.depthMap, 0, 0, 0, Data.rasterWidth, Data.rasterHeight, 1, 0, 0);
                 _recreateDepthVerticeArray=false;
             }
         }
+
+        private static void UpdateShadowGeometry()
+        {
+            if (_recreateShadowVerticeArray)
+            {
+                RgbaFloat c = new RgbaFloat(1, 0, 0, 1);
+
+                ShadowVertex dv;
+                ShadowVertex[] shadowVertices = new ShadowVertex[4];
+
+                dv = new ShadowVertex();
+                dv.TexCoords = new Vector2(0.0f, 0.0f);
+                dv.Position = new Vector2(0, 0);
+                dv.Alpha = _shadowIntensity;
+                shadowVertices[0] = dv;
+
+                dv = new ShadowVertex();
+                dv.TexCoords = new Vector2(0.0f, 1.0f);
+                dv.Position = new Vector2(0, _drawSize[1] * Data.stepsPerMM);
+                dv.Alpha = _shadowIntensity;                
+                shadowVertices[1] = dv;
+
+                dv = new ShadowVertex();
+                dv.TexCoords = new Vector2(1.0f, 0.0f);
+                dv.Position = new Vector2(_drawSize[0] * Data.stepsPerMM, 0);
+                dv.Alpha = _shadowIntensity;
+                shadowVertices[2] = dv;
+
+                dv = new ShadowVertex();
+                dv.TexCoords = new Vector2(1.0f, 1.0f);
+                dv.Position = new Vector2(_drawSize[0] * Data.stepsPerMM, _drawSize[1] * Data.stepsPerMM);
+                dv.Alpha = _shadowIntensity;
+                shadowVertices[3] = dv;
+
+                _shadowVertexBuffer = _graphicsDevice.ResourceFactory.CreateBuffer(new BufferDescription(4 * 20, BufferUsage.VertexBuffer));
+                _graphicsDevice.UpdateBuffer(_shadowVertexBuffer, 0, shadowVertices.ToArray());
+
+                _graphicsDevice.UpdateTexture<UInt16>(_shadowTexture, Data.shadowMap, 0, 0, 0, Data.rasterWidth, Data.rasterHeight, 1, 0, 0);
+                _recreateShadowVerticeArray=false;
+            }
+        }
+
         private static void UpdateGridLineGeometry()
         {
             {
@@ -1183,6 +1315,18 @@ namespace Designer
             // Draw the depthbuffer.
             _commandList.Draw(vertexCount: 4, instanceCount: 1, vertexStart: 0, instanceStart: 0);
         }
+
+
+        private static void DrawShadowBuffer()
+        {
+            _commandList.SetPipeline(_shadowPipeline);
+            _commandList.SetGraphicsResourceSet(0, _viewportResourceSet);
+            _commandList.SetGraphicsResourceSet(1, _shadowTextureSet);
+            _commandList.SetVertexBuffer(0, _shadowVertexBuffer);
+
+            // Draw the shadowbuffer.
+            _commandList.Draw(vertexCount: 4, instanceCount: 1, vertexStart: 0, instanceStart: 0);
+        }        
 
         private static void UpdateInput(InputSnapshot snapshot, float deltaSeconds)
         {
@@ -1485,6 +1629,21 @@ namespace Designer
                         _recreateDepthVerticeArray = true;
                     }
 
+
+                    ImGui.Spacing();
+                    ImGui.Spacing();
+                    ImGui.Text("Shadow color:");
+                    ImGui.SameLine();
+                    ImGui.Dummy(new Vector2(70, 0));
+                    ImGui.SameLine();
+                    ImGui.SetNextItemWidth(130);                    
+                    if (ImGui.SliderFloat("##shadowcol", ref _shadowIntensity, 0, 1))
+                    {
+                        _iniData["Shadow"]["Intensity"] = _shadowIntensity.ToString();
+                        _iniParser.WriteFile("Configuration.ini", _iniData);
+                        _recreateShadowVerticeArray = true;
+                    }
+
                     ImGui.Spacing();
                     ImGui.Spacing();
                     ImGui.PopStyleColor();
@@ -1605,7 +1764,7 @@ namespace Designer
                     ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 2f);
                     if (ImGui.Button("refresh##scriptfiles", new Vector2(104f, 24f)))
                     {
-                        directoryNames = Directory.GetDirectories("../../scripts");
+                        directoryNames = Directory.GetDirectories("scripts");
                         if (directoryNames.Length > 0)
                         {
                             if (directoryNames.Contains(_lastDirectory))
@@ -1634,7 +1793,7 @@ namespace Designer
                                 _selectedScript = 0;
                             }
                         }                        
-                        // scriptNames = Directory.GetFiles("../../scripts", "*.cs");
+                        // scriptNames = Directory.GetFiles("scripts", "*.cs");
                     }
                     ImGui.PopStyleVar();
 

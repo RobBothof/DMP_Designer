@@ -8,7 +8,7 @@ using System.Diagnostics;
 using MathNet.Numerics;
 using System.Runtime.CompilerServices;
 
-public class CubesLive : IGenerator
+public class CubesA2_3 : IGenerator
 {
     public static Random _rand;
     Vector3 PaperCenter = new Vector3(268800, 380160, 0);

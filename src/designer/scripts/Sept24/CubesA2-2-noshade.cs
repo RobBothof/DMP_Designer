@@ -8,13 +8,13 @@ using System.Diagnostics;
 using MathNet.Numerics;
 using System.Runtime.CompilerServices;
 
-public class CubesLive : IGenerator
+public class CubesA2_2_noshade : IGenerator
 {
     public static Random _rand;
     Vector3 PaperCenter = new Vector3(268800, 380160, 0);
     // public float shadeStep=0.15f;
 
-    public Vector3 SpotLight = new Vector3(15f, -0f, 0.25f);
+    public Vector3 SpotLight = new Vector3(-10.0f, 0f, -10f);
 
     public Vector3 interpolate(Vector3 A, Vector3 B, float t)
     {
@@ -28,6 +28,7 @@ public class CubesLive : IGenerator
 
     public int Shade2(Vector3 normal, float size)
     {
+            return 0;
         // return (int)((Math.Max(0,Vector3.Dot(normal,SpotLight)))*(Math.Max(0,Vector3.Dot(normal,SpotLight)))*3);
         if (Vector3.Dot(normal, SpotLight) > 0.6)
         {
@@ -39,7 +40,6 @@ public class CubesLive : IGenerator
             {
                 return (int) (size*0.4f);
             } else {
-            return 0;
             }
         }
     }
@@ -295,12 +295,12 @@ public class CubesLive : IGenerator
 
             // float shadeStep = (6.0f / size)*2.0f*Math.Max(0,(1.0f-Vector3.Dot(worldNormal1,SpotLight)));
             // float shadeStep = (1.0f - 0.9f*Math.Max(0,Vector3.Dot(worldNormal1,SpotLight)));
-            // int shadeStep = Shade2(worldNormal1, size);
-            // for (int s = 1; s < shadeStep; s++)
-            // {
-            //     l.points = new Vector3[] { interpolate(P1, P2, s / (float)shadeStep), interpolate(P4, P3, s / (float)shadeStep) };
-            //     DepthCheckAndAdd(l);
-            // }
+            int shadeStep = Shade2(worldNormal1, size);
+            for (int s = 1; s < shadeStep; s++)
+            {
+                l.points = new Vector3[] { interpolate(P1, P2, s / (float)shadeStep), interpolate(P4, P3, s / (float)shadeStep) };
+                DepthCheckAndAdd(l);
+            }
 
             // float shadeStart = (1.0f - (int)(1.0f / shadeStep) * shadeStep)*0.5f;
             // for (float t=shadeStart;t<1.0f;t+=shadeStep) {
@@ -329,12 +329,12 @@ public class CubesLive : IGenerator
             }
 
 
-            // int shadeStep = Shade2(worldNormal2,size);
-            // for (int s = 1; s < shadeStep; s++)
-            // {
-            //     l.points = new Vector3[] { interpolate(P6, P5, s / (float)shadeStep), interpolate(P7, P8, s / (float)shadeStep) };
-            //     DepthCheckAndAdd(l);
-            // }
+            int shadeStep = Shade2(worldNormal2,size);
+            for (int s = 1; s < shadeStep; s++)
+            {
+                l.points = new Vector3[] { interpolate(P6, P5, s / (float)shadeStep), interpolate(P7, P8, s / (float)shadeStep) };
+                DepthCheckAndAdd(l);
+            }
 
             // // float shadeStep = (1.0f / size)*2.0f;
             // float shadeStep = Shade(worldNormal2);        
@@ -363,12 +363,12 @@ public class CubesLive : IGenerator
                 DepthCheckAndAdd(l);
             }
 
-            // int shadeStep = Shade2(worldNormal3,size);
-            // for (int s = 1; s < shadeStep; s++)
-            // {
-            //     l.points = new Vector3[] { interpolate(P2, P3, s / (float)shadeStep), interpolate(P6, P7, s / (float)shadeStep) };
-            //     DepthCheckAndAdd(l);
-            // }
+            int shadeStep = Shade2(worldNormal3,size);
+            for (int s = 1; s < shadeStep; s++)
+            {
+                l.points = new Vector3[] { interpolate(P2, P3, s / (float)shadeStep), interpolate(P6, P7, s / (float)shadeStep) };
+                DepthCheckAndAdd(l);
+            }
 
             // float shadeStep = (1.0f / size)*2.0f;
             // float shadeStep = Shade(worldNormal3);        
@@ -398,12 +398,12 @@ public class CubesLive : IGenerator
                 DepthCheckAndAdd(l);
             }
 
-            // int shadeStep = Shade2(worldNormal4,size);
-            // for (int s = 1; s < shadeStep; s++)
-            // {
-            //     l.points = new Vector3[] { interpolate(P1, P4, s / (float)shadeStep), interpolate(P5, P8, s / (float)shadeStep) };
-            //     DepthCheckAndAdd(l);
-            // }
+            int shadeStep = Shade2(worldNormal4,size);
+            for (int s = 1; s < shadeStep; s++)
+            {
+                l.points = new Vector3[] { interpolate(P1, P4, s / (float)shadeStep), interpolate(P5, P8, s / (float)shadeStep) };
+                DepthCheckAndAdd(l);
+            }
 
             // // float shadeStep = (1.0f / size)*2.0f;
             // float shadeStep = Shade(worldNormal4);             
@@ -434,12 +434,12 @@ public class CubesLive : IGenerator
             }
 
 
-            // int shadeStep = Shade2(worldNormal5,size);
-            // for (int s = 1; s < shadeStep; s++)
-            // {
-            //     l.points = new Vector3[] { interpolate(P5, P1, s / (float)shadeStep), interpolate(P6, P2, s / (float)shadeStep) };
-            //     DepthCheckAndAdd(l);
-            // }
+            int shadeStep = Shade2(worldNormal5,size);
+            for (int s = 1; s < shadeStep; s++)
+            {
+                l.points = new Vector3[] { interpolate(P5, P1, s / (float)shadeStep), interpolate(P6, P2, s / (float)shadeStep) };
+                DepthCheckAndAdd(l);
+            }
 
             // float shadeStep = (1.0f / size)*2.0f;
             // float shadeStep = Shade(worldNormal5);      
@@ -467,12 +467,12 @@ public class CubesLive : IGenerator
                 DepthCheckAndAdd(l);
             }
 
-            // int shadeStep = Shade2(worldNormal6,size);
-            // for (int s = 1; s < shadeStep; s++)
-            // {
-            //     l.points = new Vector3[] { interpolate(P4, P8, s / (float)shadeStep), interpolate(P3, P7, s / (float)shadeStep) };
-            //     DepthCheckAndAdd(l);
-            // }
+            int shadeStep = Shade2(worldNormal6,size);
+            for (int s = 1; s < shadeStep; s++)
+            {
+                l.points = new Vector3[] { interpolate(P4, P8, s / (float)shadeStep), interpolate(P3, P7, s / (float)shadeStep) };
+                DepthCheckAndAdd(l);
+            }
 
             // float shadeStep = (1.0f / size)*2.0f;
             // float shadeStep = Shade(worldNormal6);            
@@ -533,7 +533,7 @@ public class CubesLive : IGenerator
 
         _rand = new Random(seed);
        
-        _rand = new Random(872082698);
+        _rand = new Random(1736477421);
 
         // for (int i = 0; i < 35; i++) 
         // {
@@ -554,9 +554,46 @@ public class CubesLive : IGenerator
 
         for (int i = 0; i < 77; i++)
         {
+            if (i==17)
+            {
+                    Cube(new Vector3(_rand.NextSingle()*210-90, _rand.NextSingle()*300-160, -850), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(0.0f,1f,0f)), 0.4f));
+            } else {
+            if (i==25)
+            {
+                Cube(new Vector3(_rand.NextSingle()*210-115, _rand.NextSingle()*300-150, -850), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(0.0f,1f,0f)), 0.4f));
+            } else {
+            if (i==29)
+            {
+                Cube(new Vector3(_rand.NextSingle()*210-95, _rand.NextSingle()*300-150, -850), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(0.0f,1f,0f)), 0.4f));
+            } else {
+            if (i==0) {
+                    Cube(new Vector3(_rand.NextSingle()*210-90, _rand.NextSingle()*300-150, -850), _rand.NextSingle() * 30 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(0.0f,1f,0f)), 0.4f));
+            } else {
+            if (i==27) {
+                    Cube(new Vector3(_rand.NextSingle()*210-90, _rand.NextSingle()*300-150, -850), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(0.0f,1f,0f)), 0.4f));
+            } else {
+            if (i==63) {
+                    Cube(new Vector3(_rand.NextSingle()*210-105, _rand.NextSingle()*300-250, -850), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(0.0f,1f,0f)), 0.4f));
+            } else {
+            if (i==12)
+            {
+                Cube(new Vector3(_rand.NextSingle()*210-105, _rand.NextSingle()*300-142, -850), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(0.0f,1f,0f)), 0.4f));
+            } else {
+                if (i==32)
+                {
+                    Cube(new Vector3(_rand.NextSingle()*210-80, _rand.NextSingle()*300-140, -850), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(0.0f,1f,0f)), 0.4f));
+                } else
+                {
+                    Cube(new Vector3(_rand.NextSingle()*210-105, _rand.NextSingle()*300-150, -850), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(0.0f,1f,0f)), 0.4f));
+                }
+            }
+            }
+            }
+            }
+            }
+            }}
             // Cube(new Vector3(_rand.NextSingle()*210-105, _rand.NextSingle()*300-150, -750), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(_rand.NextSingle(), _rand.NextSingle(), _rand.NextSingle())), (float)Math.PI * 2 * _rand.NextSingle()));
             // Cube(new Vector3(_rand.NextSingle()*210-105, _rand.NextSingle()*300-150, -750), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(1,0,0)), (float)Math.PI * 2 * _rand.NextSingle()));
-            Cube(new Vector3(_rand.NextSingle()*210-105, _rand.NextSingle()*300-150, -850), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(0,0.1f,1)), (float)Math.PI * 2 * _rand.NextSingle()));
         }
 
 

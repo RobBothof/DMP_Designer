@@ -84,6 +84,7 @@ public static class Shapes4
         Data.lines.Add(l);
     }
 }
+
 public class Circles4 : IGenerator
 {
     public static Random _rand;
