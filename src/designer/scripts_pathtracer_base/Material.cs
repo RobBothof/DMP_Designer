@@ -1,14 +1,12 @@
 ﻿using System.Numerics;
 using System.Runtime.InteropServices;
-using Designer;
 
-namespace RayTracer
+namespace PathTracer
 {
     [StructLayout(LayoutKind.Sequential)]
     public struct Material
     {
         public float Albedo;
-        public float Shadow;
         public float Emission;
         public MaterialType Type;
         public float FuzzOrRefIndex;
@@ -16,23 +14,10 @@ namespace RayTracer
         public float _padding1;
         public float _padding2;
 
-        public static Material Lambertian(float albedo, float base_shadow)
+        public static Material Lambertian(float albedo)
         {
             Material m = new Material(); 
-            m.Shadow = base_shadow;
             m.Type = MaterialType.Lambertian;
-            m.Albedo = albedo;
-            m.Emission = 0;
-            m.FuzzOrRefIndex = 0;
-            m._padding0 = m._padding1 = m._padding2 = 0;
-            return m;
-        }
-
-        public static Material ShadowMatte(float albedo, float base_shadow)
-        {
-            Material m = new Material(); 
-            m.Shadow = base_shadow;
-            m.Type = MaterialType.ShadowMatte;
             m.Albedo = albedo;
             m.Emission = 0;
             m.FuzzOrRefIndex = 0;

@@ -1,7 +1,7 @@
 ﻿using System.Numerics;
 using System.Runtime.InteropServices;
 
-namespace RayTracer
+namespace PathTracer
 {
     [StructLayout(LayoutKind.Sequential)]
     public struct Ray
@@ -10,14 +10,6 @@ namespace RayTracer
         private float _padding0;
         public Vector3 Direction;
         private float _padding1;
-
-        public Ray(Vector3 origin, Vector3 direction)
-        {
-            Origin = origin;
-            Direction = direction;
-            _padding0 = 0;
-            _padding1 = 0;
-        }
 
         public static Ray Create(Vector3 origin, Vector3 direction)
         {

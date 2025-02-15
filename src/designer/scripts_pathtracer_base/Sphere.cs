@@ -1,24 +1,19 @@
 ﻿using System;
 using System.Numerics;
 
-namespace RayTracer
+namespace PathTracer
 {
     public struct Sphere : IShape
     {
         public Vector3 Center { get; set; }
         public float Radius { get; set; }
-        public Vector3 Rotation { get; set; }
-        public Material Material { get; set; }
-        public int parentID { get; set; }
 
-        public static Sphere Create(Vector3 center, float radius, Material m, int parentID = -1)
+        public static Sphere Create(Vector3 center, float radius)
         {
             return new Sphere
             {
                 Center = center,
-                Radius = radius,
-                Material = m,
-                parentID = parentID
+                Radius = radius
             };
         }
 
@@ -40,7 +35,7 @@ namespace RayTracer
                 {
                     Vector3 position = Ray.PointAt(ray, t);
                     Vector3 normal = (position - center) / radius;
-                    hit = new RayHit(Ray.PointAt(ray, t), t, normal);
+                    hit = RayHit.Create(Ray.PointAt(ray, t), t, normal);
                     return true;
                 }
                 t = (-b + tmp) / a;
@@ -48,7 +43,7 @@ namespace RayTracer
                 {
                     Vector3 position = Ray.PointAt(ray, t);
                     Vector3 normal = (position - center) / radius;
-                    hit = new RayHit(position, t, normal);
+                    hit = RayHit.Create(position, t, normal);
                     return true;
                 }
             }

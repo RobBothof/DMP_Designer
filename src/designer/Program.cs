@@ -93,6 +93,7 @@ namespace Designer
     {
         public Vector2[] lineData;
         public Vector3[] points;
+        public Vector3[] worldPoints;
         public LineType type = LineType.Straight;
         public Acceleration acceleration = Acceleration.Single;
         public int layer;
@@ -110,7 +111,8 @@ namespace Designer
     public static class Data
     {
         public const int stepsPerMM = 1280;
-        public const int rasterPixelsPerStep = 256;
+        public static Vector2 paperSize = Vector2.Zero;
+        public const int rasterPixelsPerStep = 512;
         public const uint rasterWidth  = 420 * ( 1280 / rasterPixelsPerStep ); // depthmap uses 1 pixel per 20 steps for A2 paper size
         public const uint rasterHeight = 594 * ( 1280 / rasterPixelsPerStep ); // keep texture size around 2GB: 420 x 594 x (1280/20) x (1280/20) = 1.021.870.080 * 2 bytes for uint16
         public static List<Line> lines = new List<Line>();
@@ -333,6 +335,8 @@ namespace Designer
             if (_iniData["Program"]["LastScript"] != null) _lastScript = _iniData["Program"]["LastScript"];
       
             //get a list of script files
+
+            Data.paperSize = new Vector2(_drawSize[0], _drawSize[1]);
 
             directoryNames = Directory.GetDirectories("scripts");
             if (directoryNames.Length > 0)
@@ -1571,6 +1575,7 @@ namespace Designer
                         _iniData["Draw"]["Width"] = _drawSize[0].ToString();
                         _iniData["Draw"]["Height"] = _drawSize[1].ToString();
                         _iniParser.WriteFile("Configuration.ini", _iniData);
+                        Data.paperSize = new Vector2(_drawSize[0], _drawSize[1]);
                         _recreateGridLineVerticeArray = true;
                     };
 

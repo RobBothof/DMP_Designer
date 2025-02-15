@@ -1,4 +1,4 @@
-﻿namespace RayTracer
+﻿namespace PathTracer
 {
     public enum MaterialType
     {
@@ -6,6 +6,5 @@
         Metal,
         Dielectric,
         Emissive,
-        ShadowMatte
     }
 }

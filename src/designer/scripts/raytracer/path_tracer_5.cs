@@ -7,13 +7,13 @@ using Designer;
 using System.Diagnostics;
 using MathNet.Numerics;
 using System.Runtime.CompilerServices;
-using RayTracer;
+using PathTracer;
 using System.Threading;
 using System.Threading.Tasks;
 
-public class Tracer5: IGenerator
+public class PathTracer5: IGenerator
 {
-    public const uint NumSamples = 100;
+    public const uint NumSamples = 10;
 
     // private Sphere[] _spheres;
     private List<IShape> _shapes;
