@@ -18,37 +18,39 @@ public class Guides : IGenerator
     // private Material[] _materials;
 
     Vector3 paper;
-    Vector3 paperCenter; 
+    Vector3 paperCenter;
 
     private RandomRobber _rng;
 
-    public void Generate(int seed)
+    public void Generate(int seed, CancellationToken token)
     {
-        paper = new Vector3(Data.paperSize.X*Data.stepsPerMM,Data.paperSize.Y*Data.stepsPerMM,0);
-        paperCenter = paper * 0.5f; 
+        paper = new Vector3(Data.paperSize.X * Data.stepsPerMM, Data.paperSize.Y * Data.stepsPerMM, 0);
+        paperCenter = paper * 0.5f;
 
         Data.lines.Clear();
         Data.dots.Clear();
-        
+
         Line l;
 
-        for (int y=0; y<121;y+=5) {
+        for (int y = 0; y < 121; y += 5)
+        {
             l = new Line();
             l.type = LineType.Straight;
             l.acceleration = Acceleration.Start;
-            l.points = new Vector3[] { new Vector3(0,y*12800,0) , new Vector3(paper.X,y*12800,0) };
-            Data.lines.Add(l);   
+            l.points = new Vector3[] { new Vector3(0, y * 12800, 0), new Vector3(paper.X, y * 12800, 0) };
+            Data.lines.Add(l);
         }
 
-        for (int x=0; x<86;x+=5) {
+        for (int x = 0; x < 86; x += 5)
+        {
             l = new Line();
             l.type = LineType.Straight;
             l.acceleration = Acceleration.Start;
-            l.points = new Vector3[] { new Vector3(x*12800,0,0) , new Vector3(x*12800,paper.Y,0) };
-            Data.lines.Add(l);   
-        }        
+            l.points = new Vector3[] { new Vector3(x * 12800, 0, 0), new Vector3(x * 12800, paper.Y, 0) };
+            Data.lines.Add(l);
+        }
 
-        
+
 
     }
 }

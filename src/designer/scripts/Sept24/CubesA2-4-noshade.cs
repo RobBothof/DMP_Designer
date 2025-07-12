@@ -31,15 +31,17 @@ public class CubesA2_4_noshade : IGenerator
         // return (int)((Math.Max(0,Vector3.Dot(normal,SpotLight)))*(Math.Max(0,Vector3.Dot(normal,SpotLight)))*3);
         if (Vector3.Dot(normal, SpotLight) > 0.6)
         {
-            return (int) (size*0.75f);
+            return (int)(size * 0.75f);
         }
         else
         {
             if (Vector3.Dot(normal, SpotLight) > 0)
             {
-                return (int) (size*0.4f);
-            } else {
-            return 0;
+                return (int)(size * 0.4f);
+            }
+            else
+            {
+                return 0;
             }
         }
     }
@@ -523,7 +525,7 @@ public class CubesA2_4_noshade : IGenerator
 
 
 
-    public void Generate(int seed)
+    public void Generate(int seed, CancellationToken token)
     {
         Data.lines.Clear();
         Data.dots.Clear();
@@ -532,7 +534,7 @@ public class CubesA2_4_noshade : IGenerator
         Array.Fill(Data.depthMap, UInt16.MaxValue);
 
         _rand = new Random(seed);
-       
+
         _rand = new Random(872082698);
 
         // for (int i = 0; i < 35; i++) 
@@ -556,7 +558,7 @@ public class CubesA2_4_noshade : IGenerator
         {
             // Cube(new Vector3(_rand.NextSingle()*210-105, _rand.NextSingle()*300-150, -750), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(_rand.NextSingle(), _rand.NextSingle(), _rand.NextSingle())), (float)Math.PI * 2 * _rand.NextSingle()));
             // Cube(new Vector3(_rand.NextSingle()*210-105, _rand.NextSingle()*300-150, -750), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(1,0,0)), (float)Math.PI * 2 * _rand.NextSingle()));
-            Cube(new Vector3(_rand.NextSingle()*210-105, _rand.NextSingle()*300-150, -850), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(0,0.1f,1)), (float)Math.PI * 2 * _rand.NextSingle()));
+            Cube(new Vector3(_rand.NextSingle() * 210 - 105, _rand.NextSingle() * 300 - 150, -850), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(0, 0.1f, 1)), (float)Math.PI * 2 * _rand.NextSingle()));
         }
 
 

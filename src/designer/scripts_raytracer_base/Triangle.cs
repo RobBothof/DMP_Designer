@@ -31,7 +31,7 @@ namespace RayTracer
             t.sideHorizontal = side_u;
             t.sideVertical = side_v;
 
-            Vector3 n = Vector3.Cross( t.sideVertical, t.sideHorizontal);
+            Vector3 n = Vector3.Cross(t.sideVertical, t.sideHorizontal);
             t.normal = Vector3.Normalize(n);
             t.D = Vector3.Dot(t.Corner, t.normal);
 
@@ -102,24 +102,24 @@ namespace RayTracer
         }
     }
 }
-        // Vector3 N = Vector3.Cross(B - A, C - A).normalized;
-        // float dotRN = Vector3.Dot(R.direction, N);
-        // if (dotRN >= 0) return false;
+// Vector3 N = Vector3.Cross(B - A, C - A).normalized;
+// float dotRN = Vector3.Dot(R.direction, N);
+// if (dotRN >= 0) return false;
 
-        // Vector3 P = R.origin + R.direction * Vector3.Dot(N, A - R.origin) / dotRN;
+// Vector3 P = R.origin + R.direction * Vector3.Dot(N, A - R.origin) / dotRN;
 
-        // Vector3 v0 = C - A;
-        // Vector3 v1 = B - A;
-        // Vector3 v2 = P - A;
+// Vector3 v0 = C - A;
+// Vector3 v1 = B - A;
+// Vector3 v2 = P - A;
 
-        // float dot00 = Vector3.Dot(v0, v0);
-        // float dot01 = Vector3.Dot(v0, v1);
-        // float dot02 = Vector3.Dot(v0, v2);
-        // float dot11 = Vector3.Dot(v1, v1);
-        // float dot12 = Vector3.Dot(v1, v2);
+// float dot00 = Vector3.Dot(v0, v0);
+// float dot01 = Vector3.Dot(v0, v1);
+// float dot02 = Vector3.Dot(v0, v2);
+// float dot11 = Vector3.Dot(v1, v1);
+// float dot12 = Vector3.Dot(v1, v2);
 
-        // float invDenom = 1 / (dot00 * dot11 - dot01 * dot01);
-        // float u = (dot11 * dot02 - dot01 * dot12) * invDenom;
-        // float v = (dot00 * dot12 - dot01 * dot02) * invDenom;
+// float invDenom = 1 / (dot00 * dot11 - dot01 * dot01);
+// float u = (dot11 * dot02 - dot01 * dot12) * invDenom;
+// float v = (dot00 * dot12 - dot01 * dot02) * invDenom;
 
-        // return (u >= 0) && (v >= 0) && (u + v < 1);
+// return (u >= 0) && (v >= 0) && (u + v < 1);

@@ -31,15 +31,17 @@ public class CubesLive : IGenerator
         // return (int)((Math.Max(0,Vector3.Dot(normal,SpotLight)))*(Math.Max(0,Vector3.Dot(normal,SpotLight)))*3);
         if (Vector3.Dot(normal, SpotLight) > 0.6)
         {
-            return (int) (size*0.75f);
+            return (int)(size * 0.75f);
         }
         else
         {
             if (Vector3.Dot(normal, SpotLight) > 0)
             {
-                return (int) (size*0.4f);
-            } else {
-            return 0;
+                return (int)(size * 0.4f);
+            }
+            else
+            {
+                return 0;
             }
         }
     }
@@ -329,7 +331,7 @@ public class CubesLive : IGenerator
             }
 
 
-            int shadeStep = Shade2(worldNormal2,size);
+            int shadeStep = Shade2(worldNormal2, size);
             for (int s = 1; s < shadeStep; s++)
             {
                 l.points = new Vector3[] { interpolate(P6, P5, s / (float)shadeStep), interpolate(P7, P8, s / (float)shadeStep) };
@@ -363,7 +365,7 @@ public class CubesLive : IGenerator
                 DepthCheckAndAdd(l);
             }
 
-            int shadeStep = Shade2(worldNormal3,size);
+            int shadeStep = Shade2(worldNormal3, size);
             for (int s = 1; s < shadeStep; s++)
             {
                 l.points = new Vector3[] { interpolate(P2, P3, s / (float)shadeStep), interpolate(P6, P7, s / (float)shadeStep) };
@@ -398,7 +400,7 @@ public class CubesLive : IGenerator
                 DepthCheckAndAdd(l);
             }
 
-            int shadeStep = Shade2(worldNormal4,size);
+            int shadeStep = Shade2(worldNormal4, size);
             for (int s = 1; s < shadeStep; s++)
             {
                 l.points = new Vector3[] { interpolate(P1, P4, s / (float)shadeStep), interpolate(P5, P8, s / (float)shadeStep) };
@@ -434,7 +436,7 @@ public class CubesLive : IGenerator
             }
 
 
-            int shadeStep = Shade2(worldNormal5,size);
+            int shadeStep = Shade2(worldNormal5, size);
             for (int s = 1; s < shadeStep; s++)
             {
                 l.points = new Vector3[] { interpolate(P5, P1, s / (float)shadeStep), interpolate(P6, P2, s / (float)shadeStep) };
@@ -467,7 +469,7 @@ public class CubesLive : IGenerator
                 DepthCheckAndAdd(l);
             }
 
-            int shadeStep = Shade2(worldNormal6,size);
+            int shadeStep = Shade2(worldNormal6, size);
             for (int s = 1; s < shadeStep; s++)
             {
                 l.points = new Vector3[] { interpolate(P4, P8, s / (float)shadeStep), interpolate(P3, P7, s / (float)shadeStep) };
@@ -523,7 +525,7 @@ public class CubesLive : IGenerator
 
 
 
-    public void Generate(int seed)
+    public void Generate(int seed, CancellationToken token)
     {
         Data.lines.Clear();
         Data.dots.Clear();

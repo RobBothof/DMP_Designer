@@ -14,7 +14,8 @@ using ImGuiNET;
 using IniParser.Model;
 using IniParser;
 using System.Xml.Linq;
-
+using System.Collections.Concurrent;
+using System.CodeDom.Compiler;
 // using AssetPrimitives;
 
 namespace Designer
@@ -113,14 +114,13 @@ namespace Designer
         public const int stepsPerMM = 1280;
         public static Vector2 paperSize = Vector2.Zero;
         public const int rasterPixelsPerStep = 512;
-        public const uint rasterWidth  = 420 * ( 1280 / rasterPixelsPerStep ); // depthmap uses 1 pixel per 20 steps for A2 paper size
-        public const uint rasterHeight = 594 * ( 1280 / rasterPixelsPerStep ); // keep texture size around 2GB: 420 x 594 x (1280/20) x (1280/20) = 1.021.870.080 * 2 bytes for uint16
-        public static List<Line> lines = new List<Line>();
-        public static List<Dot> dots = new List<Dot>();
+        public const uint rasterWidth = 420 * (1280 / rasterPixelsPerStep); // depthmap uses 1 pixel per 20 steps for A2 paper size
+        public const uint rasterHeight = 594 * (1280 / rasterPixelsPerStep); // keep texture size around 2GB: 420 x 594 x (1280/20) x (1280/20) = 1.021.870.080 * 2 bytes for uint16
         public static List<string> DebugConsole = new List<string>();
-        public static List<Line> gridLines = new List<Line>();
-        public static ushort[] depthMap = new ushort[rasterWidth*rasterHeight];       
-        public static ushort[] shadowMap = new ushort[rasterWidth*rasterHeight];       
+        public static ushort[] depthMap = new ushort[rasterWidth * rasterHeight];
+        public static ushort[] shadowMap = new ushort[rasterWidth * rasterHeight];
+        public static ConcurrentBag<Line> lines = new ConcurrentBag<Line>();
+        public static ConcurrentBag<Dot> dots = new ConcurrentBag<Dot>();
     }
 
     struct DotVertex
@@ -156,11 +156,12 @@ namespace Designer
 
     public interface IGenerator
     {
-        void Generate(int seed);
+        void Generate(int seed, CancellationToken token = default);
     }
 
     public static class Program
     {
+
         // private static float R2 = 1.25f; // diameter (r*2) of the wheel on motor
         private static Sdl2Window _window;
         private static GraphicsDevice _graphicsDevice;
@@ -230,7 +231,7 @@ namespace Designer
         private static int _selectedScript;
         private static int _selectedDirectory;
 
-        public  static int[] _drawSize = { 1, 1 };
+        public static int[] _drawSize = { 1, 1 };
         private static int[] _gridSize = { 1, 1 };
         private static float _gridIntensity = 0.5f;
         private static float _gridlinewidth = 100f;
@@ -256,6 +257,8 @@ namespace Designer
         private static bool _openDebugConsoleHeader = false;
         private static bool _openGeneratorHeader = false;
 
+        private static int _numDebugLines = 0;
+
         private static FileIniDataParser _iniParser;
         private static IniData _iniData;
         private static Vector4 textcolor1 = new Vector4(0.81f, 0.88f, 0.72f, 1.00f);
@@ -275,8 +278,21 @@ namespace Designer
             // Console.WriteLine(i.ToString());
         }
 
+        private static float _memUsage = 0;
+        private static double _cpuUsage = 0;
+        private static TimeSpan _startCpuTime;
+        private static DateTime _startTime;
+        private static DateTime _endTime;
+        private static TimeSpan _endCpuTime;
+
         static void Main(string[] args)
         {
+            Process process = Process.GetCurrentProcess();
+            _startCpuTime = process.TotalProcessorTime;
+            _startTime = DateTime.UtcNow;
+            _endCpuTime = process.TotalProcessorTime;
+            _endTime = DateTime.UtcNow;
+
             _compiler = new CodeCompiler();
             _exporter = new DriExporter();
 
@@ -326,14 +342,14 @@ namespace Designer
             if (_iniData["Generator"]["FileName"] != null) _exportfilename = _iniData["Generator"]["FileName"];
             if (_iniData["Generator"]["Seed"] != null) _seed = int.Parse(_iniData["Generator"]["Seed"]);
             if (_iniData["Generator"]["UseSeed"] != null) _useRandomSeed = bool.Parse(_iniData["Generator"]["UseSeed"]);
-      
+
             if (_iniData["Program"]["WindowWidth"] != null) _windowWidth = int.Parse(_iniData["Program"]["WindowWidth"]);
             if (_iniData["Program"]["WindowHeight"] != null) _windowHeight = int.Parse(_iniData["Program"]["WindowHeight"]);
             if (_iniData["Program"]["WindowLeft"] != null) _windowLeft = int.Parse(_iniData["Program"]["WindowLeft"]);
             if (_iniData["Program"]["WindowTop"] != null) _windowTop = int.Parse(_iniData["Program"]["WindowTop"]);
             if (_iniData["Program"]["LastDirectory"] != null) _lastDirectory = _iniData["Program"]["LastDirectory"];
             if (_iniData["Program"]["LastScript"] != null) _lastScript = _iniData["Program"]["LastScript"];
-      
+
             //get a list of script files
 
             Data.paperSize = new Vector2(_drawSize[0], _drawSize[1]);
@@ -632,7 +648,7 @@ namespace Designer
                     // Recreate GUI buffers.
                     _imGuiRenderer.UpdateGeometry(_graphicsDevice);
 
-                    // Stage all drawwing commands in the commandlist.
+                    // Stage all drawing commands in the command list.
                     _commandList.Begin();
 
                     // Set and clear framebuffer.
@@ -641,31 +657,26 @@ namespace Designer
                     _commandList.ClearDepthStencil(1f);
 
                     // Create view matrix and projection matrix.
-                    // _commandList.UpdateBuffer(_projectionBuffer, 0, Matrix4x4.CreateOrthographic(_window.Width * 100f / _zoomlevels[_zoom], _window.Height * 100f / _zoomlevels[_zoom], 0.1f, 10000f));
-
-                    // _commandList.UpdateBuffer(_projectionBuffer, 0, Matrix4x4.CreateOrthographic(_window.Width * (51200f / (k * MathF.PI)) / _zoomlevels[_zoom], _window.Height * (51200f / (R2 * MathF.PI)) / _zoomlevels[_zoom], 0.1f, 50000f));
-                    // _commandList.UpdateBuffer(_cameraBuffer, 0, Matrix4x4.CreateLookAt(new Vector3(_cameraPosition.X, _cameraPosition.Y, 1000), new Vector3(_cameraPosition.X, _cameraPosition.Y, 0f), Vector3.UnitY));
-                    // _commandList.UpdateBuffer(_rotationBuffer, 0, Matrix4x4.CreateFromAxisAngle(Vector3.UnitZ, _cameraRotation * 0.01745329252f));
-                    // _commandList.UpdateBuffer(_translationBuffer, 0, new Vector4(_drawSize[0] * (2560f / (R2 * MathF.PI)), _drawSize[1] * (2560f / (R2 * MathF.PI)), 0, 1));
-
                     _commandList.UpdateBuffer(_projectionBuffer, 0, Matrix4x4.CreateOrthographic(_window.Width * (Data.stepsPerMM * 10f) / _zoomlevels[_zoom], _window.Height * (Data.stepsPerMM * 10f) / _zoomlevels[_zoom], 0.1f, 50000f));
                     _commandList.UpdateBuffer(_cameraBuffer, 0, Matrix4x4.CreateLookAt(new Vector3(_cameraPosition.X, _cameraPosition.Y, 1000), new Vector3(_cameraPosition.X, _cameraPosition.Y, 0f), Vector3.UnitY));
                     _commandList.UpdateBuffer(_rotationBuffer, 0, Matrix4x4.CreateFromAxisAngle(Vector3.UnitZ, _cameraRotation * 0.01745329252f));
                     _commandList.UpdateBuffer(_translationBuffer, 0, new Vector4(_drawSize[0] * (Data.stepsPerMM * 0.5f), _drawSize[1] * (Data.stepsPerMM * 0.5f), 0, 1));
 
+                    _recreateLineVerticeArray = true;
 
-                    // Update geometry if needed and draw
-                    UpdateGridLineGeometry();
-                    UpdateLineGeometry();
-                    UpdateDotGeometry();
-                    UpdateDepthGeometry();
-                    UpdateShadowGeometry();
+                    if (_compiler.IsGenerating)
+                    {
+                        // Update geometry if needed and draw
+                        _recreateDotVerticeArray = true;
+                        _recreateDepthVerticeArray = true;
+                        _recreateShadowVerticeArray = true;
+                    }
 
-                    DrawGridLines();
-                    DrawDepthBuffer();
-                    DrawShadowBuffer();
-                    DrawLines();
-                    DrawDots();
+                    UpdateAndDrawDots();
+                    UpdateAndDrawShadowMap();
+                    UpdateAndDrawDepthMap();
+                    UpdateAndDrawGridLines();
+                    UpdateAndDrawLines();
 
                     //// Draw UI
                     _imGuiRenderer.Draw(_commandList);
@@ -679,7 +690,8 @@ namespace Designer
 
 
                     // Save window size and position
-                    if (_window.Width != _windowWidth || _window.Height != _windowHeight || _window.X != _windowLeft || _window.Y != _windowTop) {
+                    if (_window.Width != _windowWidth || _window.Height != _windowHeight || _window.X != _windowLeft || _window.Y != _windowTop)
+                    {
                         _windowWidth = _window.Width;
                         _windowHeight = _window.Height;
                         _windowLeft = _window.X;
@@ -753,109 +765,111 @@ namespace Designer
 
         private static void Generate()
         {
-            if (scriptNames.Length > 0) {
-                if (File.Exists(scriptNames[_selectedScript]))
+            if (!_compiler.IsCompiling)
+            {
+                if (scriptNames.Length > 0 && File.Exists(scriptNames[_selectedScript]))
                 {
+                    Console.WriteLine("Compiling script.");
+                    Data.DebugConsole.Add(("Compiling script."));
 
-                    // Conpile and run script
-                    if (!_useRandomSeed)
-                    {
-                        _seed = new Random().Next();
-                        _iniData["Generator"]["Seed"] = _seed.ToString();
-                        _iniParser.WriteFile("Configuration.ini", _iniData);                    
-                    }
+                    Type scriptType = _compiler.Compile(scriptNames[_selectedScript]);
 
-                    // Start the stopwatch
-                    Stopwatch stopwatch = Stopwatch.StartNew();
-                                        
-                    if (_compiler.CompileAndRun(scriptNames[_selectedScript], _seed) == 1)
+                    if (scriptType != null)
                     {
-                        Console.WriteLine("Script executed succesfully.");
-                        Data.DebugConsole.Add(("Script executed succesfully."));
+                        Console.WriteLine("Executing script.");
+                        Data.DebugConsole.Add(("Executing script."));
+
+                        // Compile and run script
+                        if (!_useRandomSeed)
+                        {
+                            _seed = new Random().Next();
+                            _iniData["Generator"]["Seed"] = _seed.ToString();
+                            _iniParser.WriteFile("Configuration.ini", _iniData);
+                        }
+
+                        _compiler.Run(scriptType, _seed);
                     }
                     else
                     {
-                        Console.WriteLine("Script execution failed..");
-                        Data.DebugConsole.Add(("Script execution failed.."));
+                        Console.WriteLine("Script compilation failed..");
+                        Data.DebugConsole.Add(("Script compilation failed.."));
                     }
 
-                    // Stop the stopwatch
-                    stopwatch.Stop();
-                    TimeSpan elapsed = stopwatch.Elapsed;
-                    Console.WriteLine($"Total time: {elapsed.Hours}h {elapsed.Minutes}m {elapsed.Seconds}s {elapsed.Milliseconds}ms");
-                    Data.DebugConsole.Add($"Total time: {elapsed.Hours}h {elapsed.Minutes}m {elapsed.Seconds}s {elapsed.Milliseconds}ms");
-
-
-                    _recreateDotVerticeArray = true;
-                    _recreateLineVerticeArray = true;
-                    _recreateDepthVerticeArray = true;
-                    _recreateShadowVerticeArray = true;
                 }
             }
         }
 
-        private static void UpdateDotGeometry()
+        private static void UpdateAndDrawDots()
         {
+            Dot[] dotsSnapshot = Data.dots.ToArray();
             if (_recreateDotVerticeArray)
             {
                 DotVertex[] dotVertices = new DotVertex[Data.dots.Count * 4];
-                for (int d = 0; d < Data.dots.Count; d++)
-                {
-                    dotVertices[d * 4 + 0] = new DotVertex();
-                    dotVertices[d * 4 + 0].Position = new Vector2(Data.dots[d].position.X - Data.dots[d].size, Data.dots[d].position.Y + Data.dots[d].size);
-                    dotVertices[d * 4 + 0].Color = Data.dots[d].color;
-                    dotVertices[d * 4 + 0].UV = new Vector2(0f, 1f); ;
-                    dotVertices[d * 4 + 0].Layer = Data.dots[d].layer;
+                Parallel.For(0, dotsSnapshot.Length, d =>
+                        {
+                            dotVertices[d * 4 + 0] = new DotVertex();
+                            dotVertices[d * 4 + 0].Position = new Vector2(dotsSnapshot[d].position.X - dotsSnapshot[d].size, dotsSnapshot[d].position.Y + dotsSnapshot[d].size);
+                            dotVertices[d * 4 + 0].Color = dotsSnapshot[d].color;
+                            dotVertices[d * 4 + 0].UV = new Vector2(0f, 1f); ;
+                            dotVertices[d * 4 + 0].Layer = dotsSnapshot[d].layer;
 
-                    dotVertices[d * 4 + 1] = new DotVertex();
-                    dotVertices[d * 4 + 1].Position = new Vector2(Data.dots[d].position.X + Data.dots[d].size, Data.dots[d].position.Y + Data.dots[d].size);
-                    dotVertices[d * 4 + 1].Color = Data.dots[d].color;
-                    dotVertices[d * 4 + 1].UV = new Vector2(1f, 1f);
-                    dotVertices[d * 4 + 1].Layer = Data.dots[d].layer;
+                            dotVertices[d * 4 + 1] = new DotVertex();
+                            dotVertices[d * 4 + 1].Position = new Vector2(dotsSnapshot[d].position.X - dotsSnapshot[d].size, dotsSnapshot[d].position.Y + dotsSnapshot[d].size);
+                            dotVertices[d * 4 + 1].Color = dotsSnapshot[d].color;
+                            dotVertices[d * 4 + 1].UV = new Vector2(1f, 1f);
+                            dotVertices[d * 4 + 1].Layer = dotsSnapshot[d].layer;
 
-                    dotVertices[d * 4 + 2] = new DotVertex();
-                    dotVertices[d * 4 + 2].Position = new Vector2(Data.dots[d].position.X - Data.dots[d].size, Data.dots[d].position.Y - Data.dots[d].size);
-                    dotVertices[d * 4 + 2].Color = Data.dots[d].color;
-                    dotVertices[d * 4 + 2].UV = new Vector2(0f, 0f); ;
-                    dotVertices[d * 4 + 2].Layer = Data.dots[d].layer;
+                            dotVertices[d * 4 + 2] = new DotVertex();
+                            dotVertices[d * 4 + 2].Position = new Vector2(dotsSnapshot[d].position.X - dotsSnapshot[d].size, dotsSnapshot[d].position.Y + dotsSnapshot[d].size);
+                            dotVertices[d * 4 + 2].Color = dotsSnapshot[d].color;
+                            dotVertices[d * 4 + 2].UV = new Vector2(0f, 0f); ;
+                            dotVertices[d * 4 + 2].Layer = dotsSnapshot[d].layer;
 
-                    dotVertices[d * 4 + 3] = new DotVertex();
-                    dotVertices[d * 4 + 3].Position = new Vector2(Data.dots[d].position.X + Data.dots[d].size, Data.dots[d].position.Y - Data.dots[d].size);
-                    dotVertices[d * 4 + 3].Color = Data.dots[d].color;
-                    dotVertices[d * 4 + 3].UV = new Vector2(1f, 0f); ;
-                    dotVertices[d * 4 + 3].Layer = Data.dots[d].layer;
-                }
+                            dotVertices[d * 4 + 3] = new DotVertex();
+                            dotVertices[d * 4 + 3].Position = new Vector2(dotsSnapshot[d].position.X - dotsSnapshot[d].size, dotsSnapshot[d].position.Y + dotsSnapshot[d].size);
+                            dotVertices[d * 4 + 3].Color = dotsSnapshot[d].color;
+                            dotVertices[d * 4 + 3].UV = new Vector2(1f, 0f); ;
+                            dotVertices[d * 4 + 3].Layer = dotsSnapshot[d].layer;
+                        });
                 _graphicsDevice.DisposeWhenIdle(_dotVertexBuffer);
                 _dotVertexBuffer = _graphicsDevice.ResourceFactory.CreateBuffer(new BufferDescription((uint)Data.dots.Count * 4 * 36, BufferUsage.VertexBuffer));
                 _graphicsDevice.UpdateBuffer(_dotVertexBuffer, 0, dotVertices);
                 _recreateDotVerticeArray = false;
             }
+
+            _commandList.SetPipeline(_dotPipeline);
+            _commandList.SetGraphicsResourceSet(0, _viewportResourceSet);
+            _commandList.SetVertexBuffer(0, _dotVertexBuffer);
+
+            uint vStart = 0;
+            for (int l = 0; l < dotsSnapshot.Length; l++)
+            {
+                _commandList.Draw(vertexCount: 4, instanceCount: 1, vertexStart: vStart, instanceStart: 0);
+                vStart += 4;
+            }
         }
 
-        private static void UpdateLineGeometry()
+        private static void UpdateAndDrawLines()
         {
+            Line[] lineSnapshot = Data.lines.ToArray();
             if (_recreateLineVerticeArray)
             {
                 int vCount = 0;
                 List<LineVertex> lineVertices = new List<LineVertex>();
-
-                for (int l = 0; l < Data.lines.Count; l++)
+                for (int l = 0; l < lineSnapshot.Length; l++)
                 {
-
                     // Straight Lines
-
-                    if (Data.lines[l].type == LineType.Straight)
+                    if (lineSnapshot[l].type == LineType.Straight)
                     {
-                        for (int ctr = 0; ctr < Data.lines[l].points.Length; ctr++)
+                        for (int ctr = 0; ctr < lineSnapshot[l].points.Length; ctr++)
                         {
-
                             LineVertex v1 = new LineVertex();
-                            v1.Width = _linewidth * Data.stepsPerMM * 0.5f + Data.lines[l].points[ctr].Z * 0.35f;
+                            v1.Width = _linewidth * Data.stepsPerMM * 0.5f + lineSnapshot[l].points[ctr].Z * 0.35f;
                             v1.Edge = 0;
                             v1.Color = new RgbaFloat(_drawColor.X, _drawColor.Y, _drawColor.Z, 1.0f);
 
                             LineVertex v2 = new LineVertex();
-                            v2.Width = _linewidth * Data.stepsPerMM * 0.5f + Data.lines[l].points[ctr].Z * 0.35f;
+                            v2.Width = _linewidth * Data.stepsPerMM * 0.5f + lineSnapshot[l].points[ctr].Z * 0.35f;
                             v2.Edge = 1;
                             v2.Color = new RgbaFloat(_drawColor.X, _drawColor.Y, _drawColor.Z, 1.0f);
 
@@ -863,48 +877,48 @@ namespace Designer
 
                             if (ctr == 0)
                             {
-                                vnorm = Vector2.Normalize(Vector2.Subtract(Data.lines[l].points[ctr + 1].XY(), Data.lines[l].points[ctr].XY()));
+                                vnorm = Vector2.Normalize(Vector2.Subtract(lineSnapshot[l].points[ctr + 1].XY(), lineSnapshot[l].points[ctr].XY()));
                                 Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
-                                v1.Position = Data.lines[l].points[ctr].XY() - vperp * v1.Width;
-                                v2.Position = Data.lines[l].points[ctr].XY() + vperp * v2.Width;
+                                v1.Position = lineSnapshot[l].points[ctr].XY() - vperp * v1.Width;
+                                v2.Position = lineSnapshot[l].points[ctr].XY() + vperp * v2.Width;
                             }
 
-                            if (ctr > 0 && ctr + 1 < Data.lines[l].points.Length)
+                            if (ctr > 0 && ctr + 1 < lineSnapshot[l].points.Length)
                             {
-                                Vector2 vnorm1 = Vector2.Normalize(Vector2.Subtract(Data.lines[l].points[ctr].XY(), Data.lines[l].points[ctr - 1].XY())); //incoming line
-                                Vector2 vnorm2 = Vector2.Normalize(Vector2.Subtract(Data.lines[l].points[ctr + 1].XY(), Data.lines[l].points[ctr].XY())); //outgoing line
+                                Vector2 vnorm1 = Vector2.Normalize(Vector2.Subtract(lineSnapshot[l].points[ctr].XY(), lineSnapshot[l].points[ctr - 1].XY())); //incoming line
+                                Vector2 vnorm2 = Vector2.Normalize(Vector2.Subtract(lineSnapshot[l].points[ctr + 1].XY(), lineSnapshot[l].points[ctr].XY())); //outgoing line
                                 vnorm = Vector2.Normalize(new Vector2((vnorm1.X + vnorm2.X), (vnorm1.Y + vnorm2.Y)));
                                 float len = (v1.Width) / Vector2.Dot(vnorm1, vnorm);
                                 Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
-                                v1.Position = Data.lines[l].points[ctr].XY() - vperp * (len);
-                                v2.Position = Data.lines[l].points[ctr].XY() + vperp * (len);
+                                v1.Position = lineSnapshot[l].points[ctr].XY() - vperp * (len);
+                                v2.Position = lineSnapshot[l].points[ctr].XY() + vperp * (len);
                             }
 
                             //line end
-                            if (ctr + 1 == Data.lines[l].points.Length)
+                            if (ctr + 1 == lineSnapshot[l].points.Length)
                             {
-                                vnorm = Vector2.Normalize(Vector2.Subtract(Data.lines[l].points[ctr].XY(), Data.lines[l].points[ctr - 1].XY()));
+                                vnorm = Vector2.Normalize(Vector2.Subtract(lineSnapshot[l].points[ctr].XY(), lineSnapshot[l].points[ctr - 1].XY()));
                                 Vector2 vperp = new Vector2(-vnorm.Y, vnorm.X);
-                                v1.Position = Data.lines[l].points[ctr].XY() - vperp * v1.Width;
-                                v2.Position = Data.lines[l].points[ctr].XY() + vperp * v2.Width;
+                                v1.Position = lineSnapshot[l].points[ctr].XY() - vperp * v1.Width;
+                                v2.Position = lineSnapshot[l].points[ctr].XY() + vperp * v2.Width;
                             }
 
                             lineVertices.Insert(vCount + ctr * 2, v1);
                             lineVertices.Insert(vCount + ctr * 2 + 1, v2);
 
                         }
-                        Data.lines[l].vCount = (uint)Data.lines[l].points.Length * 2;
-                        vCount += Data.lines[l].points.Length * 2;
+                        lineSnapshot[l].vCount = (uint)lineSnapshot[l].points.Length * 2;
+                        vCount += lineSnapshot[l].points.Length * 2;
                     }
 
                     // Curves
 
-                    if (Data.lines[l].type == LineType.QuadraticBezier)
+                    if (lineSnapshot[l].type == LineType.QuadraticBezier)
                     {
                         //generate points
-                        Vector3 A = Data.lines[l].points[0];
-                        Vector3 B = Data.lines[l].points[1];
-                        Vector3 C = Data.lines[l].points[2];
+                        Vector3 A = lineSnapshot[l].points[0];
+                        Vector3 B = lineSnapshot[l].points[1];
+                        Vector3 C = lineSnapshot[l].points[2];
                         Vector3[] points = new Vector3[101];
 
                         for (int p = 0; p <= 100; p++)
@@ -964,7 +978,7 @@ namespace Designer
                             lineVertices.Insert(vCount + pctr * 2 + 1, v2);
 
                         }
-                        Data.lines[l].vCount = (uint)points.Length * 2;
+                        lineSnapshot[l].vCount = (uint)points.Length * 2;
                         vCount += points.Length * 2;
                     }
                 }
@@ -975,342 +989,47 @@ namespace Designer
                 _graphicsDevice.UpdateBuffer(_lineVertexBuffer, 0, lineVertices.ToArray());
                 _recreateLineVerticeArray = false;
             }
-        }
 
-        private static void UpdateDepthGeometry()
-        {
-            if (_recreateDepthVerticeArray)
-            {
-                RgbaFloat c = new RgbaFloat(1, 0, 0, 1);
-
-                DepthVertex dv;
-                DepthVertex[] depthVertices = new DepthVertex[4];
-
-                dv = new DepthVertex();
-                dv.TexCoords = new Vector2(0.0f, 0.0f);
-                dv.Position = new Vector2(0, 0);
-                dv.Alpha = _depthIntensity;
-                depthVertices[0] = dv;
-
-                dv = new DepthVertex();
-                dv.TexCoords = new Vector2(0.0f, 1.0f);
-                dv.Position = new Vector2(0, _drawSize[1] * Data.stepsPerMM);
-                dv.Alpha = _depthIntensity;                
-                depthVertices[1] = dv;
-
-                dv = new DepthVertex();
-                dv.TexCoords = new Vector2(1.0f, 0.0f);
-                dv.Position = new Vector2(_drawSize[0] * Data.stepsPerMM, 0);
-                dv.Alpha = _depthIntensity;
-                depthVertices[2] = dv;
-
-                dv = new DepthVertex();
-                dv.TexCoords = new Vector2(1.0f, 1.0f);
-                dv.Position = new Vector2(_drawSize[0] * Data.stepsPerMM, _drawSize[1] * Data.stepsPerMM);
-                dv.Alpha = _depthIntensity;
-                depthVertices[3] = dv;
-
-                _depthVertexBuffer = _graphicsDevice.ResourceFactory.CreateBuffer(new BufferDescription(4 * 20, BufferUsage.VertexBuffer));
-                _graphicsDevice.UpdateBuffer(_depthVertexBuffer, 0, depthVertices.ToArray());
-
-                _graphicsDevice.UpdateTexture<UInt16>(_depthTexture, Data.depthMap, 0, 0, 0, Data.rasterWidth, Data.rasterHeight, 1, 0, 0);
-                _recreateDepthVerticeArray=false;
-            }
-        }
-
-        private static void UpdateShadowGeometry()
-        {
-            if (_recreateShadowVerticeArray)
-            {
-                RgbaFloat c = new RgbaFloat(1, 0, 0, 1);
-
-                ShadowVertex dv;
-                ShadowVertex[] shadowVertices = new ShadowVertex[4];
-
-                dv = new ShadowVertex();
-                dv.TexCoords = new Vector2(0.0f, 0.0f);
-                dv.Position = new Vector2(0, 0);
-                dv.Alpha = _shadowIntensity;
-                shadowVertices[0] = dv;
-
-                dv = new ShadowVertex();
-                dv.TexCoords = new Vector2(0.0f, 1.0f);
-                dv.Position = new Vector2(0, _drawSize[1] * Data.stepsPerMM);
-                dv.Alpha = _shadowIntensity;                
-                shadowVertices[1] = dv;
-
-                dv = new ShadowVertex();
-                dv.TexCoords = new Vector2(1.0f, 0.0f);
-                dv.Position = new Vector2(_drawSize[0] * Data.stepsPerMM, 0);
-                dv.Alpha = _shadowIntensity;
-                shadowVertices[2] = dv;
-
-                dv = new ShadowVertex();
-                dv.TexCoords = new Vector2(1.0f, 1.0f);
-                dv.Position = new Vector2(_drawSize[0] * Data.stepsPerMM, _drawSize[1] * Data.stepsPerMM);
-                dv.Alpha = _shadowIntensity;
-                shadowVertices[3] = dv;
-
-                _shadowVertexBuffer = _graphicsDevice.ResourceFactory.CreateBuffer(new BufferDescription(4 * 20, BufferUsage.VertexBuffer));
-                _graphicsDevice.UpdateBuffer(_shadowVertexBuffer, 0, shadowVertices.ToArray());
-
-                _graphicsDevice.UpdateTexture<UInt16>(_shadowTexture, Data.shadowMap, 0, 0, 0, Data.rasterWidth, Data.rasterHeight, 1, 0, 0);
-                _recreateShadowVerticeArray=false;
-            }
-        }
-
-        private static void UpdateGridLineGeometry()
-        {
-            {
-                Data.gridLines.Clear();
-                int layer = 0;
-                int lastlayer = 0;
-                if (_gridSize[0] > 0 && _gridSize[1] > 0)
-                {
-                    int w = (_drawSize[0] / _gridSize[0]) * Data.stepsPerMM;
-                    int h = (_drawSize[1] / _gridSize[1]) * Data.stepsPerMM;
-                    for (int xtile = 0; xtile < _gridSize[0]; xtile++)
-                    {
-                        if (lastlayer == layer) layer = (layer + 1) % 2;
-                        lastlayer = layer;
-                        for (int ytile = 0; ytile < _gridSize[1]; ytile++)
-                        {
-                            layer = (layer + 1) % 2;
-                            Line l = new Line();
-                            l.type = LineType.Straight;
-                            l.lineData = new Vector2[] { new Vector2(xtile * w, ytile * h), new Vector2(w, h) };
-                            l.layer = layer;
-                            Data.gridLines.Add(l);
-                        }
-                    }
-                }
-            }
-
-            if (_recreateGridLineVerticeArray)
-            {
-                int vCount = 0;
-                // int cCount = 0;
-                List<LineVertex> gridLineVertices = new List<LineVertex>();
-
-                for (int l = 0; l < Data.gridLines.Count; l++)
-                {
-                    if (Data.gridLines[l].type == LineType.Straight)
-                    {
-                        RgbaFloat c = new RgbaFloat(0, 0, 0, 0);
-
-                        if (Data.gridLines[l].layer == 0)
-                        {
-                            float r = 0f, g = 0f, b = 0f;
-                            if (_clearColor.X > 0.5) r = _clearColor.X - 0.5f * _gridIntensity;
-                            if (_clearColor.X <= 0.5) r = _clearColor.X + 0.5f * _gridIntensity;
-                            if (_clearColor.Y > 0.5) g = _clearColor.Y - 0.5f * _gridIntensity;
-                            if (_clearColor.Y <= 0.5) g = _clearColor.Y + 0.5f * _gridIntensity;
-                            if (_clearColor.Z > 0.5) b = _clearColor.Z - 0.5f * _gridIntensity;
-                            if (_clearColor.Z <= 0.5) b = _clearColor.Z + 0.5f * _gridIntensity;
-                            c = new RgbaFloat(r, g, b, 1.0f);
-                        }
-                        if (Data.gridLines[l].layer == 1)
-                        {
-                            float r = 0f, g = 0f, b = 0f;
-                            if (_clearColor.X > 0.5) r = _clearColor.X - 1.0f * _gridIntensity;
-                            if (_clearColor.X <= 0.5) r = _clearColor.X + 1.0f * _gridIntensity;
-                            if (_clearColor.Y > 0.5) g = _clearColor.Y - 1.0f * _gridIntensity;
-                            if (_clearColor.Y <= 0.5) g = _clearColor.Y + 1.0f * _gridIntensity;
-                            if (_clearColor.Z > 0.5) b = _clearColor.Z - 1.0f * _gridIntensity;
-                            if (_clearColor.Z <= 0.5) b = _clearColor.Z + 1.0f * _gridIntensity;
-                            c = new RgbaFloat(r, g, b, 1.0f);
-                        }
-
-                        LineVertex v1 = new LineVertex();
-                        v1.Width = _gridlinewidth;
-                        v1.Edge = 0;
-                        v1.Color = c;
-                        v1.Position = Data.gridLines[l].lineData[0];
-
-                        LineVertex v2 = new LineVertex();
-                        v2.Width = _gridlinewidth;
-                        v2.Edge = 1;
-                        v2.Color = c;
-                        v2.Position = Data.gridLines[l].lineData[0] + new Vector2(0, Data.gridLines[l].lineData[1].Y);
-
-                        LineVertex v3 = new LineVertex();
-                        v3.Width = _gridlinewidth;
-                        v3.Edge = 0;
-                        v3.Color = c;
-                        v3.Position = Data.gridLines[l].lineData[0] + new Vector2(Data.gridLines[l].lineData[1].X, 0);
-
-                        LineVertex v4 = new LineVertex();
-                        v4.Width = _gridlinewidth;
-                        v4.Edge = 1;
-                        v4.Color = c;
-                        v4.Position = Data.gridLines[l].lineData[0] + Data.gridLines[l].lineData[1];
-
-                        gridLineVertices.Insert(vCount + 0, v1);
-                        gridLineVertices.Insert(vCount + 1, v2);
-                        gridLineVertices.Insert(vCount + 2, v3);
-                        gridLineVertices.Insert(vCount + 3, v4);
-                        vCount += 4;
-                        // cCount++;
-                    }
-                }
-
-                /// Add the border.
-                /// 
-
-                RgbaFloat borderC = new RgbaFloat(_borderColor.X, _borderColor.Y, _borderColor.Z, 1.0f);
-
-                LineVertex v;
-
-                v = new LineVertex();
-                v.Width = _gridlinewidth;
-                v.Edge = 0;
-                v.Color = borderC;
-                v.Position = new Vector2(-_borderWidth * Data.stepsPerMM, -_borderWidth * Data.stepsPerMM);
-                gridLineVertices.Insert(vCount, v);
-                vCount++;
-
-                v = new LineVertex();
-                v.Width = _gridlinewidth;
-                v.Edge = 1;
-                v.Color = borderC;
-                v.Position = new Vector2(0f, 0f);
-                gridLineVertices.Insert(vCount, v);
-                vCount++;
-
-                v = new LineVertex();
-                v.Width = _gridlinewidth;
-                v.Edge = 0;
-                v.Color = borderC;
-                v.Position = new Vector2((_drawSize[0] + _borderWidth) * Data.stepsPerMM, -_borderWidth * Data.stepsPerMM);
-                gridLineVertices.Insert(vCount, v);
-                vCount++;
-
-                v = new LineVertex();
-                v.Width = _gridlinewidth;
-                v.Edge = 1;
-                v.Color = borderC;
-                v.Position = new Vector2(_drawSize[0] * Data.stepsPerMM, 0f);
-                gridLineVertices.Insert(vCount, v);
-                vCount++;
-
-                v = new LineVertex();
-                v.Width = _gridlinewidth;
-                v.Edge = 0;
-                v.Color = borderC;
-                v.Position = new Vector2((_drawSize[0] + _borderWidth) * Data.stepsPerMM, (_drawSize[1] + _borderWidth) * Data.stepsPerMM);
-                gridLineVertices.Insert(vCount, v);
-                vCount++;
-
-                v = new LineVertex();
-                v.Width = _gridlinewidth;
-                v.Edge = 1;
-                v.Color = borderC;
-                v.Position = new Vector2(_drawSize[0] * Data.stepsPerMM, _drawSize[1] * Data.stepsPerMM);
-                gridLineVertices.Insert(vCount, v);
-                vCount++;
-
-                v = new LineVertex();
-                v.Width = _gridlinewidth;
-                v.Edge = 0;
-                v.Color = borderC;
-                v.Position = new Vector2((-_borderWidth) * Data.stepsPerMM, (_drawSize[1] + _borderWidth) * Data.stepsPerMM);
-                gridLineVertices.Insert(vCount, v);
-                vCount++;
-
-                v = new LineVertex();
-                v.Width = _gridlinewidth;
-                v.Edge = 1;
-                v.Color = borderC;
-                v.Position = new Vector2(0, _drawSize[1] * Data.stepsPerMM);
-                gridLineVertices.Insert(vCount, v);
-                vCount++;
-
-                v = new LineVertex();
-                v.Width = _gridlinewidth;
-                v.Edge = 0;
-                v.Color = borderC;
-                v.Position = new Vector2(-_borderWidth * Data.stepsPerMM, -_borderWidth * Data.stepsPerMM);
-                gridLineVertices.Insert(vCount, v);
-                vCount++;
-
-                v = new LineVertex();
-                v.Width = _gridlinewidth;
-                v.Edge = 1;
-                v.Color = borderC;
-                v.Position = new Vector2(0f, 0f);
-                gridLineVertices.Insert(vCount, v);
-                vCount++;
-
-                _graphicsDevice.DisposeWhenIdle(_gridLineVertexBuffer);
-                _gridLineVertexBuffer = _graphicsDevice.ResourceFactory.CreateBuffer(new BufferDescription((uint)vCount * 36, BufferUsage.VertexBuffer));
-
-                _graphicsDevice.UpdateBuffer(_gridLineVertexBuffer, 0, gridLineVertices.ToArray());
-                _recreateGridLineVerticeArray = false;
-            }
-        }
-
-        private static void DrawDots()
-        {
-            _commandList.SetPipeline(_dotPipeline);
-            _commandList.SetGraphicsResourceSet(0, _viewportResourceSet);
-            _commandList.SetVertexBuffer(0, _dotVertexBuffer);
-
-            uint vStart = 0;
-            uint vLength = 4;
-            for (int l = 0; l < Data.dots.Count; l++)
-            {
-                _commandList.Draw(vertexCount: vLength, instanceCount: 1, vertexStart: vStart, instanceStart: 0);
-                vStart += vLength;
-            }
-        }
-
-        private static void DrawLines()
-        {
             _commandList.SetPipeline(_linePipeline);
             _commandList.SetGraphicsResourceSet(0, _viewportResourceSet);
             _commandList.SetVertexBuffer(0, _lineVertexBuffer);
 
             uint vStart = 0;
             uint vLength = 0;
-            for (int l = 0; l < Data.lines.Count; l++)
+            for (int l = 0; l < lineSnapshot.Length; l++)
             {
-                if (Data.lines[l].type == LineType.QuadraticBezier)
+                if (lineSnapshot[l].type == LineType.QuadraticBezier)
                 {
-                    vLength = Data.lines[l].vCount;
+                    vLength = lineSnapshot[l].vCount;
                 }
 
-                if (Data.lines[l].type == LineType.Straight)
+                if (lineSnapshot[l].type == LineType.Straight)
                 {
-                    vLength = Data.lines[l].vCount;
+                    vLength = lineSnapshot[l].vCount;
                 }
+
                 _commandList.Draw(vertexCount: vLength, instanceCount: 1, vertexStart: vStart, instanceStart: 0);
                 vStart += vLength;
             }
         }
 
-        private static void DrawGridLines()
+        private static void UpdateAndDrawDepthMap()
         {
-            _commandList.SetPipeline(_gridLinePipeline);
-            _commandList.SetGraphicsResourceSet(0, _viewportResourceSet);
-            _commandList.SetVertexBuffer(0, _gridLineVertexBuffer);
-
-            uint vStart = 0;
-            uint vLength = 0;
-            for (int l = 0; l < Data.gridLines.Count; l++)
+            if (_recreateDepthVerticeArray)
             {
-                if (Data.gridLines[l].type == LineType.Straight)
-                {
-                    vLength = (uint)Data.gridLines[l].lineData.Length * 2;
-                }
-                _commandList.Draw(vertexCount: vLength, instanceCount: 1, vertexStart: vStart, instanceStart: 0);
-                vStart += vLength;
-            }
-            // Draw the border.
-            _commandList.Draw(vertexCount: 10, instanceCount: 1, vertexStart: vStart, instanceStart: 0);
-        }
+                DepthVertex[] depthVertices = new DepthVertex[4];
 
-        private static void DrawDepthBuffer()
-        {
+                depthVertices[0] = new DepthVertex() { TexCoords = new Vector2(0.0f, 0.0f), Position = new Vector2(0, 0), Alpha = _depthIntensity };
+                depthVertices[1] = new DepthVertex() { TexCoords = new Vector2(0.0f, 1.0f), Position = new Vector2(0, _drawSize[1] * Data.stepsPerMM), Alpha = _depthIntensity };
+                depthVertices[2] = new DepthVertex() { TexCoords = new Vector2(1.0f, 0.0f), Position = new Vector2(_drawSize[0] * Data.stepsPerMM, 0), Alpha = _depthIntensity };
+                depthVertices[3] = new DepthVertex() { TexCoords = new Vector2(1.0f, 1.0f), Position = new Vector2(_drawSize[0] * Data.stepsPerMM, _drawSize[1] * Data.stepsPerMM), Alpha = _depthIntensity };
+
+                _depthVertexBuffer = _graphicsDevice.ResourceFactory.CreateBuffer(new BufferDescription(4 * 20, BufferUsage.VertexBuffer));
+                _graphicsDevice.UpdateBuffer(_depthVertexBuffer, 0, depthVertices.ToArray());
+
+                _graphicsDevice.UpdateTexture<UInt16>(_depthTexture, Data.depthMap, 0, 0, 0, Data.rasterWidth, Data.rasterHeight, 1, 0, 0);
+                _recreateDepthVerticeArray = false;
+            }
             _commandList.SetPipeline(_depthPipeline);
             _commandList.SetGraphicsResourceSet(0, _viewportResourceSet);
             _commandList.SetGraphicsResourceSet(1, _depthTextureSet);
@@ -1320,9 +1039,25 @@ namespace Designer
             _commandList.Draw(vertexCount: 4, instanceCount: 1, vertexStart: 0, instanceStart: 0);
         }
 
-
-        private static void DrawShadowBuffer()
+        private static void UpdateAndDrawShadowMap()
         {
+            if (_recreateShadowVerticeArray)
+            {
+                // Create a quad to draw the shadowbuffer, and update the shadowbuffer from the Data.shadowMap.
+
+                ShadowVertex[] shadowVertices = new ShadowVertex[4];
+                shadowVertices[0] = new ShadowVertex() { TexCoords = new Vector2(0.0f, 0.0f), Position = new Vector2(0, 0), Alpha = _shadowIntensity };
+                shadowVertices[1] = new ShadowVertex() { TexCoords = new Vector2(0.0f, 1.0f), Position = new Vector2(0, _drawSize[1] * Data.stepsPerMM), Alpha = _shadowIntensity };
+                shadowVertices[2] = new ShadowVertex() { TexCoords = new Vector2(1.0f, 0.0f), Position = new Vector2(_drawSize[0] * Data.stepsPerMM, 0), Alpha = _shadowIntensity };
+                shadowVertices[3] = new ShadowVertex() { TexCoords = new Vector2(1.0f, 1.0f), Position = new Vector2(_drawSize[0] * Data.stepsPerMM, _drawSize[1] * Data.stepsPerMM), Alpha = _shadowIntensity };
+
+                _shadowVertexBuffer = _graphicsDevice.ResourceFactory.CreateBuffer(new BufferDescription(4 * 20, BufferUsage.VertexBuffer));
+                _graphicsDevice.UpdateBuffer(_shadowVertexBuffer, 0, shadowVertices.ToArray());
+
+                _graphicsDevice.UpdateTexture<UInt16>(_shadowTexture, Data.shadowMap, 0, 0, 0, Data.rasterWidth, Data.rasterHeight, 1, 0, 0);
+                _recreateShadowVerticeArray = false;
+            }
+
             _commandList.SetPipeline(_shadowPipeline);
             _commandList.SetGraphicsResourceSet(0, _viewportResourceSet);
             _commandList.SetGraphicsResourceSet(1, _shadowTextureSet);
@@ -1330,7 +1065,90 @@ namespace Designer
 
             // Draw the shadowbuffer.
             _commandList.Draw(vertexCount: 4, instanceCount: 1, vertexStart: 0, instanceStart: 0);
-        }        
+        }
+
+        private static void UpdateAndDrawGridLines()
+        {
+            if (_gridSize[0] <= 0 || _gridSize[1] <= 0)
+                return;
+
+            LineVertex[] gridLineVertices = new LineVertex[_gridSize[0] * _gridSize[1] * 4 + 10];
+
+            int layer = 0;
+            int lastlayer = 0;
+            int w = (_drawSize[0] / _gridSize[0]) * Data.stepsPerMM;
+            int h = (_drawSize[1] / _gridSize[1]) * Data.stepsPerMM;
+            int index = 0;
+
+            for (int xtile = 0; xtile < _gridSize[0]; xtile++)
+            {
+                if (lastlayer == layer) layer = (layer + 1) % 2;
+                lastlayer = layer;
+                for (int ytile = 0; ytile < _gridSize[1]; ytile++)
+                {
+                    layer = (layer + 1) % 2;
+
+                    Vector2 start = new Vector2(xtile * w, ytile * h);
+                    Vector2 size = new Vector2(w, h);
+
+                    // Choose color based on layer.
+                    RgbaFloat color;
+                    if (layer == 0)
+                    {
+                        float r = _clearColor.X > 0.5f ? _clearColor.X - 0.5f * _gridIntensity : _clearColor.X + 0.5f * _gridIntensity;
+                        float g = _clearColor.Y > 0.5f ? _clearColor.Y - 0.5f * _gridIntensity : _clearColor.Y + 0.5f * _gridIntensity;
+                        float b = _clearColor.Z > 0.5f ? _clearColor.Z - 0.5f * _gridIntensity : _clearColor.Z + 0.5f * _gridIntensity;
+                        color = new RgbaFloat(r, g, b, 1.0f);
+                    }
+                    else
+                    {
+                        float r = _clearColor.X > 0.5f ? _clearColor.X - 1.0f * _gridIntensity : _clearColor.X + 1.0f * _gridIntensity;
+                        float g = _clearColor.Y > 0.5f ? _clearColor.Y - 1.0f * _gridIntensity : _clearColor.Y + 1.0f * _gridIntensity;
+                        float b = _clearColor.Z > 0.5f ? _clearColor.Z - 1.0f * _gridIntensity : _clearColor.Z + 1.0f * _gridIntensity;
+                        color = new RgbaFloat(r, g, b, 1.0f);
+                    }
+
+                    // Create four vertices for the current grid tile.
+                    gridLineVertices[index++] = new LineVertex() { Width = _gridlinewidth, Edge = 0, Color = color, Position = start };
+                    gridLineVertices[index++] = new LineVertex() { Width = _gridlinewidth, Edge = 1, Color = color, Position = start + new Vector2(0, size.Y) };
+                    gridLineVertices[index++] = new LineVertex() { Width = _gridlinewidth, Edge = 0, Color = color, Position = start + new Vector2(size.X, 0) };
+                    gridLineVertices[index++] = new LineVertex() { Width = _gridlinewidth, Edge = 1, Color = color, Position = start + size };
+                }
+            }
+
+            /// Add the border.
+            /// 
+
+            RgbaFloat borderC = new RgbaFloat(_borderColor.X, _borderColor.Y, _borderColor.Z, 1.0f);
+
+            /// Create ten vertices for the border.
+            /// 
+            gridLineVertices[index++] = new LineVertex() { Width = _gridlinewidth, Edge = 0, Color = borderC, Position = new Vector2(-_borderWidth * Data.stepsPerMM, -_borderWidth * Data.stepsPerMM) };
+            gridLineVertices[index++] = new LineVertex() { Width = _gridlinewidth, Edge = 1, Color = borderC, Position = new Vector2(0f, 0f) };
+            gridLineVertices[index++] = new LineVertex() { Width = _gridlinewidth, Edge = 0, Color = borderC, Position = new Vector2((_drawSize[0] + _borderWidth) * Data.stepsPerMM, -_borderWidth * Data.stepsPerMM) };
+            gridLineVertices[index++] = new LineVertex() { Width = _gridlinewidth, Edge = 1, Color = borderC, Position = new Vector2(_drawSize[0] * Data.stepsPerMM, 0f) };
+            gridLineVertices[index++] = new LineVertex() { Width = _gridlinewidth, Edge = 0, Color = borderC, Position = new Vector2((_drawSize[0] + _borderWidth) * Data.stepsPerMM, (_drawSize[1] + _borderWidth) * Data.stepsPerMM) };
+            gridLineVertices[index++] = new LineVertex() { Width = _gridlinewidth, Edge = 1, Color = borderC, Position = new Vector2(_drawSize[0] * Data.stepsPerMM, _drawSize[1] * Data.stepsPerMM) };
+            gridLineVertices[index++] = new LineVertex() { Width = _gridlinewidth, Edge = 0, Color = borderC, Position = new Vector2((-_borderWidth) * Data.stepsPerMM, (_drawSize[1] + _borderWidth) * Data.stepsPerMM) };
+            gridLineVertices[index++] = new LineVertex() { Width = _gridlinewidth, Edge = 1, Color = borderC, Position = new Vector2(0, _drawSize[1] * Data.stepsPerMM) };
+            gridLineVertices[index++] = new LineVertex() { Width = _gridlinewidth, Edge = 0, Color = borderC, Position = new Vector2(-_borderWidth * Data.stepsPerMM, -_borderWidth * Data.stepsPerMM) };
+            gridLineVertices[index++] = new LineVertex() { Width = _gridlinewidth, Edge = 1, Color = borderC, Position = new Vector2(0f, 0f) };
+
+            // Update the grid vertex buffer.
+            _graphicsDevice.DisposeWhenIdle(_gridLineVertexBuffer);
+            _gridLineVertexBuffer = _graphicsDevice.ResourceFactory.CreateBuffer(new BufferDescription((uint)gridLineVertices.Length * 36, BufferUsage.VertexBuffer));
+            _graphicsDevice.UpdateBuffer(_gridLineVertexBuffer, 0, gridLineVertices);
+
+            _commandList.SetPipeline(_gridLinePipeline);
+            _commandList.SetGraphicsResourceSet(0, _viewportResourceSet);
+            _commandList.SetVertexBuffer(0, _gridLineVertexBuffer);
+
+            // Draw the grid.
+            _commandList.Draw(vertexCount: (uint)gridLineVertices.Length - 10, instanceCount: 1, vertexStart: 0, instanceStart: 0);
+
+            // Draw the border.
+            _commandList.Draw(vertexCount: 10, instanceCount: 1, vertexStart: (uint)gridLineVertices.Length - 10, instanceStart: 0);
+        }
 
         private static void UpdateInput(InputSnapshot snapshot, float deltaSeconds)
         {
@@ -1445,9 +1263,7 @@ namespace Designer
 
         private static void RebuildGUI()
         {
-            // ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0.75f, 0.75f, 0.75f, 1.00f));
-            // ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new Vector4(0.75f, 0.75f, 0.75f, 1.00f));
-            // ImGui.PushStyleColor(ImGuiCol.HeaderActive, new Vector4(0.75f, 0.75f, 0.75f, 1.00f));
+            ImGui.PushStyleColor(ImGuiCol.Text, textcolor2);
             if (ImGui.BeginMainMenuBar())
             {
                 if (ImGui.BeginMenu("File"))
@@ -1455,7 +1271,7 @@ namespace Designer
                     if (ImGui.MenuItem("Quit", "", false, true))
                     {
                         _window.Close();
-                    };
+                    }
                     ImGui.EndMenu();
                 }
 
@@ -1465,7 +1281,7 @@ namespace Designer
                     ImGui.MenuItem("ImGui Demo", string.Empty, ref _showImGuiDemoWindow, true);
                     ImGui.Separator();
                     ImGui.MenuItem("Draw Settings", string.Empty, ref _openDrawSettingsHeader, true);
-                    ImGui.MenuItem("Camera", string.Empty, ref _openCameraHeader, true);
+                    ImGui.MenuItem("Viewport", string.Empty, ref _openCameraHeader, true);
                     ImGui.MenuItem("Serial Monitor", string.Empty, ref _openSerialMonitorHeader, true);
                     ImGui.MenuItem("Statistics", string.Empty, ref _openStatisticsHeader, true);
                     ImGui.MenuItem("Debug Console", string.Empty, ref _openDebugConsoleHeader, true);
@@ -1473,9 +1289,8 @@ namespace Designer
                 }
                 ImGui.EndMenuBar();
             }
-            // ImGui.PopStyleColor();
-            // ImGui.PopStyleColor();
-            // ImGui.PopStyleColor();
+
+            ImGui.PopStyleColor();
 
             if (_showImGuiDemoWindow)
             {
@@ -1487,19 +1302,16 @@ namespace Designer
 
             if (_showSettingsWindow)
             {
-                // ImGui.SetNextWindowPos(new Vector2(_window.Width - 275f, 20f));
-                ImGui.SetNextWindowPos(new Vector2(0, 20f));
-                ImGui.SetNextWindowSize(new Vector2(316f, _window.Height - 20f));
+                ImGui.SetNextWindowPos(new Vector2(0, 24f));
+                ImGui.SetNextWindowSize(new Vector2(316f, _window.Height - 24f));
                 ImGui.Begin("Settings", ref _showSettingsWindow, ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoTitleBar);
 
-                ImGui.PushStyleColor(ImGuiCol.Text, textcolor2);
-                ImGui.PushFont(_imGuiRenderer.fontBold);
                 ImGui.SetNextItemOpen(_openDrawSettingsHeader);
+                ImGui.PushStyleColor(ImGuiCol.Text, textcolor2);
                 if (ImGui.CollapsingHeader("Draw Settings"))
                 {
-                    ImGui.PushStyleColor(ImGuiCol.Text, textcolor1);
+                    ImGui.PopStyleColor();
 
-                    ImGui.PushFont(_imGuiRenderer.fontRegular);
                     if (!_openDrawSettingsHeader)
                     {
                         _openDrawSettingsHeader = true;
@@ -1547,8 +1359,7 @@ namespace Designer
                         _iniData["Line"]["Width"] = _linewidth.ToString();
                         _iniParser.WriteFile("Configuration.ini", _iniData);
                         _recreateLineVerticeArray = true;
-                    };
-
+                    }
 
                     ImGui.Spacing();
                     ImGui.Spacing();
@@ -1577,7 +1388,7 @@ namespace Designer
                         _iniParser.WriteFile("Configuration.ini", _iniData);
                         Data.paperSize = new Vector2(_drawSize[0], _drawSize[1]);
                         _recreateGridLineVerticeArray = true;
-                    };
+                    }
 
                     ImGui.Text("Grid:");
                     ImGui.SameLine();
@@ -1590,7 +1401,7 @@ namespace Designer
                         _iniData["Grid"]["Height"] = _gridSize[1].ToString();
                         _iniParser.WriteFile("Configuration.ini", _iniData);
                         _recreateGridLineVerticeArray = true;
-                    };
+                    }
 
                     ImGui.Spacing();
                     ImGui.Spacing();
@@ -1618,7 +1429,7 @@ namespace Designer
                         _iniData["Border"]["Width"] = _borderWidth.ToString();
                         _iniParser.WriteFile("Configuration.ini", _iniData);
                         _recreateGridLineVerticeArray = true;
-                    };
+                    }
 
                     ImGui.Spacing();
                     ImGui.Spacing();
@@ -1626,7 +1437,7 @@ namespace Designer
                     ImGui.SameLine();
                     ImGui.Dummy(new Vector2(70, 0));
                     ImGui.SameLine();
-                    ImGui.SetNextItemWidth(130);                    
+                    ImGui.SetNextItemWidth(130);
                     if (ImGui.SliderFloat("##depthcol", ref _depthIntensity, 0, 1))
                     {
                         _iniData["Depth"]["Intensity"] = _depthIntensity.ToString();
@@ -1634,14 +1445,13 @@ namespace Designer
                         _recreateDepthVerticeArray = true;
                     }
 
-
                     ImGui.Spacing();
                     ImGui.Spacing();
                     ImGui.Text("Shadow color:");
                     ImGui.SameLine();
                     ImGui.Dummy(new Vector2(70, 0));
                     ImGui.SameLine();
-                    ImGui.SetNextItemWidth(130);                    
+                    ImGui.SetNextItemWidth(130);
                     if (ImGui.SliderFloat("##shadowcol", ref _shadowIntensity, 0, 1))
                     {
                         _iniData["Shadow"]["Intensity"] = _shadowIntensity.ToString();
@@ -1651,12 +1461,10 @@ namespace Designer
 
                     ImGui.Spacing();
                     ImGui.Spacing();
-                    ImGui.PopStyleColor();
-                    ImGui.PopFont();
-
                 }
                 else
                 {
+                    ImGui.PopStyleColor();
                     if (_openDrawSettingsHeader)
                     {
                         _openDrawSettingsHeader = false;
@@ -1664,16 +1472,12 @@ namespace Designer
                         _iniParser.WriteFile("Configuration.ini", _iniData);
                     }
                 }
-                ImGui.PopStyleColor();
-                ImGui.PopFont();
 
-                ImGui.PushStyleColor(ImGuiCol.Text, textcolor2);
-                ImGui.PushFont(_imGuiRenderer.fontBold);
                 ImGui.SetNextItemOpen(_openCameraHeader);
-                if (ImGui.CollapsingHeader("Camera"))
+                ImGui.PushStyleColor(ImGuiCol.Text, textcolor2);
+                if (ImGui.CollapsingHeader("Viewport"))
                 {
-                    ImGui.PushStyleColor(ImGuiCol.Text, textcolor1);
-                    ImGui.PushFont(_imGuiRenderer.fontRegular);
+                    ImGui.PopStyleColor();
                     if (!_openCameraHeader)
                     {
                         _openCameraHeader = true;
@@ -1682,10 +1486,10 @@ namespace Designer
                     }
                     ImGui.Spacing();
 
-                    ImGui.Dummy(new Vector2(4,4));
+                    ImGui.Dummy(new Vector2(4, 4));
                     ImGui.Text("Position (px) ");
                     ImGui.SameLine();
-                    ImGui.Dummy(new Vector2(86,26));
+                    ImGui.Dummy(new Vector2(86, 26));
                     ImGui.SameLine();
                     ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 0f);
                     if (ImGui.Button("center", new Vector2(104, 24)))
@@ -1705,7 +1509,8 @@ namespace Designer
                         _iniData["Camera"]["PosX"] = _cameraPosition.X.ToString();
                         _iniData["Camera"]["PosY"] = _cameraPosition.Y.ToString();
                         _iniParser.WriteFile("Configuration.ini", _iniData);
-                    };
+                    }
+
                     ImGui.Spacing();
                     ImGui.Spacing();
 
@@ -1725,14 +1530,15 @@ namespace Designer
                     }
                     ImGui.Spacing();
                     ImGui.Spacing();
-                    ImGui.Dummy(new Vector2(4,4));
+                    ImGui.Dummy(new Vector2(4, 4));
 
-                    ImGui.PopStyleColor();
-                    ImGui.PopFont();
+                    //ImGui.PopStyleColor();
+                    //ImGui.PopFont();
 
                 }
                 else
                 {
+                    ImGui.PopStyleColor();
                     if (_openCameraHeader)
                     {
                         _openCameraHeader = false;
@@ -1740,25 +1546,19 @@ namespace Designer
                         _iniParser.WriteFile("Configuration.ini", _iniData);
                     }
                 }
-                ImGui.PopStyleColor();
-                ImGui.PopFont();
 
-                //// Generator
-                ImGui.PushStyleColor(ImGuiCol.Text, textcolor2);
-                ImGui.PushFont(_imGuiRenderer.fontBold);
                 ImGui.SetNextItemOpen(_openGeneratorHeader);
+                ImGui.PushStyleColor(ImGuiCol.Text, textcolor2);
                 if (ImGui.CollapsingHeader("Generator"))
                 {
-                    ImGui.PushStyleColor(ImGuiCol.Text, textcolor1);
-                    ImGui.PushFont(_imGuiRenderer.fontRegular);
-
+                    ImGui.PopStyleColor();
                     if (!_openGeneratorHeader)
                     {
                         _openGeneratorHeader = true;
                         _iniData["Header"]["Generator"] = "true";
                         _iniParser.WriteFile("Configuration.ini", _iniData);
                     }
-                    ImGui.Dummy(new Vector2(4,4));
+                    ImGui.Dummy(new Vector2(4, 4));
 
                     ImGui.Spacing();
                     ImGui.Text("Script");
@@ -1782,7 +1582,7 @@ namespace Designer
                                 _lastDirectory = directoryNames[0];
                                 scriptNames = Directory.GetFiles(directoryNames[0], "*.cs");
                                 _selectedDirectory = 0;
-                           
+
                             }
                         }
 
@@ -1797,59 +1597,60 @@ namespace Designer
                                 _lastScript = scriptNames[0];
                                 _selectedScript = 0;
                             }
-                        }                        
+                        }
                         // scriptNames = Directory.GetFiles("scripts", "*.cs");
                     }
                     ImGui.PopStyleVar();
 
-                    ImGui.Dummy(new Vector2(4,4));
+                    ImGui.Dummy(new Vector2(4, 4));
 
                     if (directoryNames.Length > 0)
                     {
-                        ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
-                        ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
-                        ImGui.PushStyleColor(ImGuiCol.HeaderActive, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
-
+                        // ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
+                        // ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
+                        // ImGui.PushStyleColor(ImGuiCol.HeaderActive, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
                         ImGui.PushItemWidth(300);
                         if (ImGui.BeginCombo("##comboscriptdirs", directoryNames[_selectedDirectory].Split("scripts/")[1], ImGuiComboFlags.HeightLargest))
                         {
+                            ImGui.PushStyleColor(ImGuiCol.Text, textcolor2);
                             for (int n = 0; n < directoryNames.Length; n++)
                             {
                                 bool is_selected = (directoryNames[_selectedDirectory] == directoryNames[n]); // You can store your selection however you want, outside or inside your objects
                                 if (ImGui.Selectable(directoryNames[n].Split("scripts/")[1], is_selected))
                                     _selectedDirectory = n;
-                                    
-                                    if (Directory.Exists(directoryNames[_selectedDirectory])) { 
-                                        scriptNames = Directory.GetFiles(directoryNames[_selectedDirectory], "*.cs");
 
-                                        if (scriptNames.Length > 0)
+                                if (Directory.Exists(directoryNames[_selectedDirectory]))
+                                {
+                                    scriptNames = Directory.GetFiles(directoryNames[_selectedDirectory], "*.cs");
+
+                                    if (scriptNames.Length > 0)
+                                    {
+                                        if (scriptNames.Contains(_lastScript))
                                         {
-                                            if (scriptNames.Contains(_lastScript))
-                                            {
-                                                _selectedScript = Array.IndexOf(scriptNames, _lastScript);
-                                            }
-                                            else
-                                            {
-                                                _selectedScript = 0;
-                                            }
-                                            _lastScript = scriptNames[_selectedScript];
-                                            _iniData["Program"]["LastScript"] = scriptNames[_selectedScript];
+                                            _selectedScript = Array.IndexOf(scriptNames, _lastScript);
                                         }
+                                        else
+                                        {
+                                            _selectedScript = 0;
+                                        }
+                                        _lastScript = scriptNames[_selectedScript];
+                                        _iniData["Program"]["LastScript"] = scriptNames[_selectedScript];
                                     }
-                                    _lastDirectory= directoryNames[_selectedDirectory];
-                                    _iniData["Program"]["LastDirectory"] = directoryNames[_selectedDirectory];
-                                    _iniParser.WriteFile("Configuration.ini", _iniData);
+                                }
+                                _lastDirectory = directoryNames[_selectedDirectory];
+                                _iniData["Program"]["LastDirectory"] = directoryNames[_selectedDirectory];
+                                _iniParser.WriteFile("Configuration.ini", _iniData);
                                 if (is_selected)
                                 {
                                     ImGui.SetItemDefaultFocus();   // You may set the initial focus when opening the combo (scrolling + for keyboard navigation support)
                                 }
                             }
+                            ImGui.PopStyleColor();
                             ImGui.EndCombo();
                         }
                         ImGui.PopItemWidth();
-                        ImGui.PopStyleColor();
-                        ImGui.PopStyleColor();
-                        ImGui.PopStyleColor();
+                        //ImGui.PopStyleColor();
+                        //ImGui.PopStyleColor();
                     }
                     else
                     {
@@ -1860,37 +1661,38 @@ namespace Designer
                     }
                     // ---
 
-                    ImGui.Dummy(new Vector2(4,4));
+                    ImGui.Dummy(new Vector2(4, 4));
 
                     if (scriptNames.Length > 0)
                     {
-                        ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
-                        ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
-                        ImGui.PushStyleColor(ImGuiCol.HeaderActive, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
+                        // ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
+                        // ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
+                        // ImGui.PushStyleColor(ImGuiCol.HeaderActive, new Vector4(0.25f, 0.25f, 0.25f, 1.00f));
 
-                        // TODO Add Script Folder
                         ImGui.PushItemWidth(300);
+
                         if (ImGui.BeginCombo("##comboscriptfiles", scriptNames[_selectedScript].Split("/").Last<String>(), ImGuiComboFlags.HeightLargest))
                         {
+                            ImGui.PushStyleColor(ImGuiCol.Text, textcolor2);
                             for (int n = 0; n < scriptNames.Count(); n++)
                             {
                                 bool is_selected = (scriptNames[_selectedScript] == scriptNames[n]); // You can store your selection however you want, outside or inside your objects
                                 if (ImGui.Selectable(scriptNames[n].Split("/").Last<String>(), is_selected))
                                     _selectedScript = n;
-                                    _lastScript = scriptNames[_selectedScript];                             
-                                    _iniData["Program"]["LastScript"] = scriptNames[_selectedScript];
-                                    _iniParser.WriteFile("Configuration.ini", _iniData);                                    
+                                _lastScript = scriptNames[_selectedScript];
+                                _iniData["Program"]["LastScript"] = scriptNames[_selectedScript];
+                                _iniParser.WriteFile("Configuration.ini", _iniData);
                                 if (is_selected)
                                 {
                                     ImGui.SetItemDefaultFocus();   // You may set the initial focus when opening the combo (scrolling + for keyboard navigation support)
                                 }
                             }
+                            ImGui.PopStyleColor();
                             ImGui.EndCombo();
                         }
                         ImGui.PopItemWidth();
-                        ImGui.PopStyleColor();
-                        ImGui.PopStyleColor();
-                        ImGui.PopStyleColor();
+                        //ImGui.PopStyleColor();
+                        //ImGui.PopStyleColor();
                     }
                     else
                     {
@@ -1900,30 +1702,47 @@ namespace Designer
                         ImGui.Dummy(new Vector2(109f, 0f));
                     }
 
-                    ImGui.Dummy(new Vector2(4,20));
+                    ImGui.Dummy(new Vector2(4, 20));
                     ImGui.Spacing();
 
                     ImGui.SetNextItemWidth(180);
-                    if (ImGui.DragInt("##RandomSeed", ref _seed)) {
+                    if (ImGui.DragInt("##RandomSeed", ref _seed))
+                    {
                         _iniData["Generator"]["Seed"] = _seed.ToString();
                         _iniParser.WriteFile("Configuration.ini", _iniData);
-                    };
+                    }
+                    ;
                     ImGui.SameLine();
                     ImGui.Dummy(new Vector2(10f, 0f));
                     ImGui.SameLine();
-                    if (ImGui.Checkbox(" Use Seed", ref _useRandomSeed)) {
+                    if (ImGui.Checkbox(" Use Seed", ref _useRandomSeed))
+                    {
                         _iniData["Generator"]["UseSeed"] = _useRandomSeed.ToString();
                         _iniParser.WriteFile("Configuration.ini", _iniData);
-                    };
+                    }
+                    ;
 
                     ImGui.Spacing();
                     // ImGui.Dummy(new Vector2(0f, 10f));
-                    ImGui.Dummy(new Vector2(4,4));
+                    ImGui.Dummy(new Vector2(4, 4));
                     ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 2f);
-                    if (ImGui.Button("compile and generate", new Vector2(300, 24)))
+
+                    if (_compiler.IsGenerating)
                     {
-                        Generate();
+                        if (ImGui.Button("stop", new Vector2(300, 24)))
+                        {
+                            _compiler.Stop();
+                        }
                     }
+                    else
+                    {
+                        if (ImGui.Button("compile and generate", new Vector2(300, 24)))
+                        {
+                            Generate();
+                        }
+                    }
+
+
                     ImGui.PopStyleVar();
 
                     ImGui.Dummy(new Vector2(0, 15f));
@@ -1935,13 +1754,15 @@ namespace Designer
                     {
                         _iniData["Generator"]["FilePath"] = _exportfilepath;
                         _iniParser.WriteFile("Configuration.ini", _iniData);
-                    };
+                    }
+                    ;
                     ImGui.SetNextItemWidth(300f);
                     if (ImGui.InputText("##expfilename", ref _exportfilename, 80))
                     {
                         _iniData["Generator"]["FileName"] = _exportfilename;
                         _iniParser.WriteFile("Configuration.ini", _iniData);
-                    };
+                    }
+                    ;
 
                     ImGui.Dummy(new Vector2(4, 4f));
 
@@ -2011,12 +1832,13 @@ namespace Designer
                     }
                     ImGui.PopStyleVar();
                     ImGui.Dummy(new Vector2(4, 4f));
-                    ImGui.PopFont();
+                    //ImGui.PopFont();
                     ImGui.Spacing();
                     ImGui.Spacing();
                 }
                 else
                 {
+                    ImGui.PopStyleColor();
                     if (_openGeneratorHeader)
                     {
                         _openGeneratorHeader = false;
@@ -2024,17 +1846,13 @@ namespace Designer
                         _iniParser.WriteFile("Configuration.ini", _iniData);
                     }
                 }
-                ImGui.PopStyleColor();
-                ImGui.PopFont();
 
-                //// Statistics 
-                ImGui.PushStyleColor(ImGuiCol.Text, textcolor2);
-                ImGui.PushFont(_imGuiRenderer.fontBold);
+
                 ImGui.SetNextItemOpen(_openStatisticsHeader);
+                ImGui.PushStyleColor(ImGuiCol.Text, textcolor2);
                 if (ImGui.CollapsingHeader("Stats"))
                 {
-                    ImGui.PushStyleColor(ImGuiCol.Text, textcolor1);
-                    ImGui.PushFont(_imGuiRenderer.fontRegular);
+                    ImGui.PopStyleColor();
                     if (!_openStatisticsHeader)
                     {
                         _openStatisticsHeader = true;
@@ -2052,14 +1870,37 @@ namespace Designer
                     ImGui.Text($"Application ms/frame: {1000.0f / io.Framerate:0.##}");
                     ImGui.Text($"Application FPS     : {io.Framerate:0.#}");
                     ImGui.Text($"Application delta   : {io.DeltaTime:0.##} ms");
+                    ImGui.Spacing();
+                    Process currentProcess = Process.GetCurrentProcess();
+                    // long memoryUsedBytes = currentProcess.WorkingSet64; // in bytes
+                    _memUsage = _memUsage * 0.9f + (currentProcess.WorkingSet64 / (1024 * 1024)) * 0.1f;
+                    ImGui.Text($"Memory: {_memUsage:0#} mb");
+                    ImGui.Text($"CPU Cores: {Environment.ProcessorCount} ");
+
+                    Process process = Process.GetCurrentProcess();
+                    _endTime = DateTime.UtcNow;
+                    _endCpuTime = process.TotalProcessorTime;
+
+                    double cpuUsedMs = (_endCpuTime - _startCpuTime).TotalMilliseconds;
+                    double totalMsPassed = (_endTime - _startTime).TotalMilliseconds;
+
+                    _cpuUsage = _cpuUsage * 0.95f + ((cpuUsedMs / totalMsPassed) / Environment.ProcessorCount) * 0.05f;
+
+                    ImGui.SameLine();
+                    ImGui.ProgressBar((float)_cpuUsage, new Vector2(170, 20));
+                    _startCpuTime = process.TotalProcessorTime;
+                    _startTime = DateTime.UtcNow;
+
+                    int coreCount = Environment.ProcessorCount;
 
                     ImGui.Dummy(new Vector2(0, 12f));
-                    ImGui.PopStyleColor();
-                    ImGui.PopFont();
+                    //ImGui.PopStyleColor();
+                    //ImGui.PopFont();
 
                 }
                 else
                 {
+                    ImGui.PopStyleColor();
                     if (_openStatisticsHeader)
                     {
                         _openStatisticsHeader = false;
@@ -2067,17 +1908,12 @@ namespace Designer
                         _iniParser.WriteFile("Configuration.ini", _iniData);
                     }
                 }
-                ImGui.PopStyleColor();
-                ImGui.PopFont();
 
-                ImGui.PushStyleColor(ImGuiCol.Text, textcolor2);
-                ImGui.PushFont(_imGuiRenderer.fontBold);
                 ImGui.SetNextItemOpen(_openDebugConsoleHeader);
+                ImGui.PushStyleColor(ImGuiCol.Text, textcolor2);
                 if (ImGui.CollapsingHeader("Debug Console"))
                 {
-                    ImGui.PushStyleColor(ImGuiCol.Text, textcolor1);
-                    ImGui.PushFont(_imGuiRenderer.fontRegular);
-
+                    ImGui.PopStyleColor();
                     if (!_openDebugConsoleHeader)
                     {
                         _openDebugConsoleHeader = true;
@@ -2086,20 +1922,27 @@ namespace Designer
                     }
 
                     ImGui.Spacing();
-                    ImGui.SetNextWindowSizeConstraints(new Vector2(100f, 100f), new Vector2(1500f, 200f));
-                    ImGui.BeginChild("DebugConsoleChild", new Vector2(300f, 240f), true, ImGuiWindowFlags.AlwaysVerticalScrollbar);
+                    ImGui.BeginChild("DebugConsoleChild", new Vector2(300f, 420f), true, ImGuiWindowFlags.AlwaysVerticalScrollbar);
                     foreach (String msg in Data.DebugConsole)
                     {
                         ImGui.Text(msg);
                     }
+                    ImGui.Dummy(new Vector2(0, 8));
+                    if (Data.DebugConsole.Count > _numDebugLines)
+                    {
+                        ImGui.SetScrollHereY(1.0f);
+                        _numDebugLines = Data.DebugConsole.Count;
+                    }
                     ImGui.EndChild();
 
                     ImGui.Dummy(new Vector2(0, 15f));
-                    ImGui.PopStyleColor();
-                    ImGui.PopFont();
+                    //ImGui.PopStyleColor();
+                    //ImGui.PopFont();
                 }
                 else
                 {
+                    ImGui.PopStyleColor();
+
                     if (_openDebugConsoleHeader)
                     {
                         _openDebugConsoleHeader = false;
@@ -2107,8 +1950,8 @@ namespace Designer
                         _iniParser.WriteFile("Configuration.ini", _iniData);
                     }
                 }
-                ImGui.PopStyleColor();
-                ImGui.PopFont();
+                //ImGui.PopStyleColor();
+                //ImGui.PopFont();
                 ImGui.End();
             }
 

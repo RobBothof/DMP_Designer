@@ -68,7 +68,7 @@ namespace RayTracer
             float projectedY = (y / z) * cam.focalLength * -0.5f;
 
             // Map to the camera's 2D plane
-            return new Vector3(projectedX, projectedY, 0);            
+            return new Vector3(projectedX, projectedY, 0);
             // return new Vector3(x, y, z);            
         }
     }

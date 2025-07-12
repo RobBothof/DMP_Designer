@@ -49,7 +49,7 @@ public class idea010 : IGenerator {
         }
 
         for (int p=0; p<PointsArray.Length - 1; p++) {
-            Data.lines.Insert(p,new Line());
+            Data.lines.Add(p,new Line());
             Data.lines[p].type=LineType.QuadraticBezier;
             Data.lines[p].acceleration=Acceleration.Single;
             // Vector3 pc = Vector3.Lerp(PaperCenter,pt,(float)_rand.NextDouble()+0.5f);

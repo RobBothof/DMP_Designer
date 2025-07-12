@@ -20,7 +20,7 @@ namespace PathTracer
         public static Quad Create(Vector3 corner, Vector3 side_u, Vector3 side_v)
         {
             Quad q = new Quad();
-            
+
             q.Corner = corner;
             q.sideHorizontal = side_u;
             q.sideVertical = side_v;
@@ -35,9 +35,9 @@ namespace PathTracer
         }
 
 
-        public bool Hit( Ray ray, float tMin, float tMax, out RayHit hit)
+        public bool Hit(Ray ray, float tMin, float tMax, out RayHit hit)
         {
-            float denom = Vector3.Dot(normal,ray.Direction);
+            float denom = Vector3.Dot(normal, ray.Direction);
 
             hit = new RayHit();
 

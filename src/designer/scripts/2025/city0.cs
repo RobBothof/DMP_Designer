@@ -13,14 +13,13 @@ using System.Linq;
 using System.Net.Http.Headers;
 using System.Collections.Concurrent;
 
-public class Tower : IGenerator
+public class City0 : IGenerator
 {
     private List<IShape> _shapes;
     private List<Light> _lights;
     private List<Cuboid> _cuboids;
     private List<Pyramid> _pyramids;
-
-    private ConcurrentBag<Line> _threadSafeLines = new ConcurrentBag<Line>();
+    private List<Sphere> _spheres;
 
     Camera cam;
 
@@ -37,12 +36,15 @@ public class Tower : IGenerator
     int stepSize = 1024;
     // int stepSize = 16;
 
-    int numShadowLines = 400;
+    int numShadowLines = 600;
 
     private RandomRobber _rng;
+    private CancellationToken _cancellationToken;
 
-    public void Generate(int seed)
+    public void Generate(int seed, CancellationToken cancellationToken)
     {
+        _cancellationToken = cancellationToken;
+        _cancellationToken.ThrowIfCancellationRequested();
         paper = new Vector3(Data.paperSize.X * Data.stepsPerMM, Data.paperSize.Y * Data.stepsPerMM, 0);
         paperCenter = paper * 0.5f;
 
@@ -53,7 +55,7 @@ public class Tower : IGenerator
         float aperture = 0f;
 
         cam = Camera.Create(
-            new Vector3(14, 27f, 10),
+            new Vector3(14, 7f, 10),
             new Vector3(-6, 10f, 0),
             Vector3.UnitY,
             90f,
@@ -71,11 +73,12 @@ public class Tower : IGenerator
 
         _lights = new List<Light>
         {
-            new Light { Position = new Vector3(3000.0f, 4500.0f, -1000.0f), Intensity = 1.0f }
+            new Light { Position = new Vector3(2000.0f, 4500.0f, -1000.0f), Intensity = 5.0f }
         };
 
         _cuboids = new List<Cuboid>();
         _pyramids = new List<Pyramid>();
+        _spheres = new List<Sphere>();
 
         int id_counter = 10;
         // _cuboids.Add(Cuboid.Create(new Vector3(20, 10, 20), new Vector3(10f, 1f, 10f), Quaternion.CreateFromAxisAngle(Vector3.UnitX, 0.0f), mat1, id_counter++));
@@ -103,16 +106,24 @@ public class Tower : IGenerator
             }
         }
 
+        // for (int s=0; s< 100; s++) {
+        //     _spheres.Add(Sphere.Create(new Vector3(_rng.RandomFloat() * 140 - 255, _rng.RandomFloat() * 3 + 130 , _rng.RandomFloat() * 500  - 250), _rng.RandomFloat() * 10,mat1, id_counter++));
+        // } 
+
         /// END SCENE SETUP
+
+        _cancellationToken.ThrowIfCancellationRequested();
 
         // The collection of shapes is used to trace visibility and shadows.
         _shapes = new List<IShape>();
         _shapes.AddRange(_cuboids.SelectMany(c => c.Quads).Cast<IShape>());
         _shapes.AddRange(_pyramids.SelectMany(p => p.Triangles).Cast<IShape>());
+        _shapes.AddRange(_spheres.Cast<IShape>());
 
         Parallel.ForEach(_cuboids, cub1 =>
         // foreach (Cuboid cub1 in _cuboids)
         {
+            _cancellationToken.ThrowIfCancellationRequested();
             if (cub1.Material.Type != MaterialType.ShadowMatte)
             {
                 for (int cq = 0; cq < cub1.Quads.Length; cq++)
@@ -181,6 +192,7 @@ public class Tower : IGenerator
         Parallel.ForEach(_pyramids, p =>
         // foreach (Pyramid p in _pyramids)
         {
+            _cancellationToken.ThrowIfCancellationRequested();
             for (int pt = 0; pt < p.Triangles.Length; pt++)
             {
                 Vector3 CamQuadNormal = Vector3.Normalize(p.Triangles[pt].Center - cam.Origin);
@@ -205,6 +217,7 @@ public class Tower : IGenerator
         float yStep = paper.Y / numShadowLines;
         Parallel.For(-1, numShadowLines + 2, s =>
         {
+            _cancellationToken.ThrowIfCancellationRequested();
             Vector3 from = new Vector3(0, yStep * s, 0);
             Vector3 to = new Vector3(paper.X, yStep * s, 0);
             Vector3 P0 = from;
@@ -217,6 +230,7 @@ public class Tower : IGenerator
 
             for (int i = 0; i < xSteps; i++)
             {
+                _cancellationToken.ThrowIfCancellationRequested();
                 P += new Vector3(stepSize, 0, 0);
 
                 Vector3 target = cam.LowerLeftCorner + P.X * cam.Horizontal / paper.X + P.Y * cam.Vertical / paper.Y;
@@ -234,7 +248,7 @@ public class Tower : IGenerator
                 if (startDraw)
                 {
                     // P1 = P;
-                    _threadSafeLines.Add(new Line
+                    Data.lines.Add(new Line
                     {
                         type = LineType.Straight,
                         acceleration = Acceleration.Single,
@@ -246,7 +260,7 @@ public class Tower : IGenerator
 
             if (startDraw)
             {
-                _threadSafeLines.Add(new Line
+                Data.lines.Add(new Line
                 {
                     type = LineType.Straight,
                     acceleration = Acceleration.Single,
@@ -256,8 +270,6 @@ public class Tower : IGenerator
         }
         );
 
-        // Done, add lines from thread-safe collection to Data.lines
-        Data.lines.AddRange(_threadSafeLines);
     }
 
 
@@ -265,6 +277,7 @@ public class Tower : IGenerator
     // Check the lines visibility, split line if needed and project it to paper.
     public void AddLine(Vector3 from, Vector3 to, LineType type, Acceleration acceleration, int parentID)
     {
+        _cancellationToken.ThrowIfCancellationRequested();
         Vector3 P0 = Camera.Project(cam, from) * paper.X + paperCenter;
         Vector3 P1 = Camera.Project(cam, to) * paper.X + paperCenter;
 
@@ -274,6 +287,8 @@ public class Tower : IGenerator
 
         for (int i = 0; i < steps; i++)
         {
+            _cancellationToken.ThrowIfCancellationRequested();
+
             Vector3 P = Vector3.Lerp(from, to, i / steps);
             Vector3 PCam = Camera.Project(cam, P) * (paper.X) + paperCenter;
             if (PCam.X > 0 && PCam.X < paper.X && PCam.Y > 0 && PCam.Y < paper.Y)
@@ -300,7 +315,7 @@ public class Tower : IGenerator
             {
                 P1 = PCam;
                 startDraw = false;
-                _threadSafeLines.Add(new Line
+                Data.lines.Add(new Line
                 {
                     type = type,
                     acceleration = acceleration,
@@ -313,7 +328,7 @@ public class Tower : IGenerator
         if (startDraw)
         {
             P1 = Camera.Project(cam, to) * paper.X + paperCenter;
-            _threadSafeLines.Add(new Line
+            Data.lines.Add(new Line
             {
                 type = type,
                 acceleration = acceleration,
@@ -330,6 +345,7 @@ public class Tower : IGenerator
 
         for (int j = 0; j < _shapes.Count; j++)
         {
+            _cancellationToken.ThrowIfCancellationRequested();
             if (_shapes[j].parentID != parentID && parentID != -1)
             {
                 if (_shapes[j].Hit(r, 0.001f, maxDistance, out RayHit tempHit))
@@ -352,6 +368,7 @@ public class Tower : IGenerator
 
         for (int i = 0; i < _shapes.Count; i++)
         {
+            _cancellationToken.ThrowIfCancellationRequested();
             if (_shapes[i].Hit(ray, 0.001f, closest, out RayHit tempHit))
             {
                 hitAnything = true;

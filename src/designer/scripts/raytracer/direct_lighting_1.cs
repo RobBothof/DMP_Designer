@@ -18,18 +18,18 @@ public class DirectLighting1 : IGenerator
     // private Material[] _materials;
 
     Vector3 paper;
-    Vector3 paperCenter; 
+    Vector3 paperCenter;
 
     private RandomRobber _rng;
 
-    public void Generate(int seed)
+    public void Generate(int seed, CancellationToken token)
     {
-        paper = new Vector3(Data.paperSize.X*Data.stepsPerMM,Data.paperSize.Y*Data.stepsPerMM,0);
-        paperCenter = paper * 0.5f; 
+        paper = new Vector3(Data.paperSize.X * Data.stepsPerMM, Data.paperSize.Y * Data.stepsPerMM, 0);
+        paperCenter = paper * 0.5f;
 
         Data.lines.Clear();
         Data.dots.Clear();
-        
+
         float distToFocus = 15;
         // float aperture = 0.025f;
         float aperture = 0f;
@@ -62,9 +62,11 @@ public class DirectLighting1 : IGenerator
 
         _cuboids = new List<Cuboid>();
 
-        for (int x=0; x < 14; x++){
-            for (int y=0; y < 21; y++){
-                _cuboids.Add(Cuboid.Create(new Vector3(x*2-13f, y*2-20, 0), new Vector3( 1f,  1f,  1f), Quaternion.CreateFromAxisAngle(_rng.RandomUnitVector(),_rng.RandomFloat()*2*MathF.PI), mat1));
+        for (int x = 0; x < 14; x++)
+        {
+            for (int y = 0; y < 21; y++)
+            {
+                _cuboids.Add(Cuboid.Create(new Vector3(x * 2 - 13f, y * 2 - 20, 0), new Vector3(1f, 1f, 1f), Quaternion.CreateFromAxisAngle(_rng.RandomUnitVector(), _rng.RandomFloat() * 2 * MathF.PI), mat1));
             }
         }
 
@@ -93,43 +95,45 @@ public class DirectLighting1 : IGenerator
         // _cuboids.Add(Cuboid.Create(new Vector3( 1,  4.4f,  0), new Vector3( 1f,  1f,  1f), Quaternion.CreateFromAxisAngle(_rng.RandomUnitVector(),_rng.RandomFloat()*2*MathF.PI), mat1));
         // _cuboids.Add(Cuboid.Create(new Vector3( 3,  4.4f,  0), new Vector3( 1f,  1f,  1f), Quaternion.CreateFromAxisAngle(_rng.RandomUnitVector(),_rng.RandomFloat()*2*MathF.PI), mat1));
 
-        _cuboids.Add(Cuboid.Create(new Vector3( 0,  0, -0.5f), new Vector3(80f, 80f,  1f), Quaternion.CreateFromAxisAngle(Vector3.UnitX,0.0f), mat2));
+        _cuboids.Add(Cuboid.Create(new Vector3(0, 0, -0.5f), new Vector3(80f, 80f, 1f), Quaternion.CreateFromAxisAngle(Vector3.UnitX, 0.0f), mat2));
 
         _shapes = new List<IShape>();
 
         Line l;
 
-        
-        foreach (Cuboid cub1 in _cuboids){
+
+        foreach (Cuboid cub1 in _cuboids)
+        {
             for (int cq = 0; cq < cub1.Quads.Length; cq++)
             {
                 _shapes.Add(cub1.Quads[cq]);
-            
+
                 Vector3 CamQuadNormal = Vector3.Normalize(cub1.Quads[cq].Center - cam.Origin);
-                if (Vector3.Dot(CamQuadNormal,cub1.Quads[cq].normal) < 0) {
+                if (Vector3.Dot(CamQuadNormal, cub1.Quads[cq].normal) < 0)
+                {
                     l = new Line();
                     l.type = LineType.Straight;
                     l.acceleration = Acceleration.Start;
-                    l.points = new Vector3[] { Camera.Project(cam,cub1.Quads[cq].Vertices[0]) * paper.X + paperCenter,Camera.Project(cam,cub1.Quads[cq].Vertices[1]) * paper.X + paperCenter};
-                    Data.lines.Add(l);   
+                    l.points = new Vector3[] { Camera.Project(cam, cub1.Quads[cq].Vertices[0]) * paper.X + paperCenter, Camera.Project(cam, cub1.Quads[cq].Vertices[1]) * paper.X + paperCenter };
+                    Data.lines.Add(l);
 
                     l = new Line();
                     l.type = LineType.Straight;
                     l.acceleration = Acceleration.Start;
-                    l.points = new Vector3[] { Camera.Project(cam,cub1.Quads[cq].Vertices[1]) * paper.X + paperCenter,Camera.Project(cam,cub1.Quads[cq].Vertices[2]) * paper.X + paperCenter};
-                    Data.lines.Add(l);   
+                    l.points = new Vector3[] { Camera.Project(cam, cub1.Quads[cq].Vertices[1]) * paper.X + paperCenter, Camera.Project(cam, cub1.Quads[cq].Vertices[2]) * paper.X + paperCenter };
+                    Data.lines.Add(l);
 
                     l = new Line();
                     l.type = LineType.Straight;
                     l.acceleration = Acceleration.Start;
-                    l.points = new Vector3[] { Camera.Project(cam,cub1.Quads[cq].Vertices[2]) * paper.X + paperCenter,Camera.Project(cam,cub1.Quads[cq].Vertices[3]) * paper.X + paperCenter};
-                    Data.lines.Add(l);   
+                    l.points = new Vector3[] { Camera.Project(cam, cub1.Quads[cq].Vertices[2]) * paper.X + paperCenter, Camera.Project(cam, cub1.Quads[cq].Vertices[3]) * paper.X + paperCenter };
+                    Data.lines.Add(l);
 
                     l = new Line();
                     l.type = LineType.Straight;
                     l.acceleration = Acceleration.Start;
-                    l.points = new Vector3[] { Camera.Project(cam,cub1.Quads[cq].Vertices[3]) * paper.X + paperCenter,Camera.Project(cam,cub1.Quads[cq].Vertices[0]) * paper.X + paperCenter};
-                    Data.lines.Add(l);                   
+                    l.points = new Vector3[] { Camera.Project(cam, cub1.Quads[cq].Vertices[3]) * paper.X + paperCenter, Camera.Project(cam, cub1.Quads[cq].Vertices[0]) * paper.X + paperCenter };
+                    Data.lines.Add(l);
                 }
             }
 
@@ -138,7 +142,7 @@ public class DirectLighting1 : IGenerator
 
 
 
-        
+
         float invWidth = 1f / Data.rasterWidth;
         float invHeight = 1f / Data.rasterHeight;
 
@@ -162,7 +166,7 @@ public class DirectLighting1 : IGenerator
                 double gamma = 2.2f;
                 color = (float)Math.Pow(color, 1.0 / gamma);
                 Data.shadowMap[y * (int)Data.rasterWidth + x] = (ushort)(MathF.Max(MathF.Min(color, 1.0f), 0.0f) * ushort.MaxValue);
-                Data.depthMap[y * (int)Data.rasterWidth + x] = (ushort)(ushort.MaxValue - (ushort)(MathF.Max(MathF.Min(depth*20000, ushort.MaxValue), 0.0f)));
+                Data.depthMap[y * (int)Data.rasterWidth + x] = (ushort)(ushort.MaxValue - (ushort)(MathF.Max(MathF.Min(depth * 20000, ushort.MaxValue), 0.0f)));
             }
 
             Interlocked.Add(ref frameRays, rayCount);
@@ -170,7 +174,7 @@ public class DirectLighting1 : IGenerator
 
         Console.WriteLine($"Total rays shot: {frameRays}.");
         Data.DebugConsole.Add($"Total rays shot: {frameRays}.");
-        
+
 
     }
 
@@ -231,22 +235,22 @@ public class DirectLighting1 : IGenerator
                 bool inShadow = false;
                 for (int j = 0; j < _shapes.Count; j++)
                 {
-                        if (_shapes[j].Hit(shadowRay, 0.001f, 9999999f, out RayHit tempHit))
-                        {
-                            inShadow = true;
-                            shadowHit = tempHit;
-                        }
+                    if (_shapes[j].Hit(shadowRay, 0.001f, 9999999f, out RayHit tempHit))
+                    {
+                        inShadow = true;
+                        shadowHit = tempHit;
+                    }
                 }
 
                 if (!inShadow)
                 {
                     Vector3 SurfaceNormal = hit.Normal;
                     Vector3 LightDirection = Vector3.Normalize(shadowRay.Direction);
-                    float d = MathF.Min(1.0f,MathF.Max(0.0f, Vector3.Dot(LightDirection, SurfaceNormal)));
-                    float cosTheta = d*d;
+                    float d = MathF.Min(1.0f, MathF.Max(0.0f, Vector3.Dot(LightDirection, SurfaceNormal)));
+                    float cosTheta = d * d;
 
                     luminance += _shapes[hitID].Material.Albedo * cosTheta;
-                } 
+                }
             }
             return luminance;
         }

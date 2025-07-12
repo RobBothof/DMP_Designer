@@ -38,7 +38,7 @@ public class DirectLighting5 : IGenerator
 
     private RandomRobber _rng;
 
-    public void Generate(int seed)
+    public void Generate(int seed, CancellationToken token)
     {
 
         paper = new Vector3(Data.paperSize.X * Data.stepsPerMM, Data.paperSize.Y * Data.stepsPerMM, 0);
@@ -79,24 +79,24 @@ public class DirectLighting5 : IGenerator
         int id_counter = 0;
         _cuboids.Add(Cuboid.Create(new Vector3(0, 1, 0), new Vector3(40f, 1f, 40f), Quaternion.CreateFromAxisAngle(Vector3.UnitX, 0.0f), mat2, id_counter++));
 
-        _pyramids.Add(Pyramid.Create(new Vector3(1,2,8), new Vector3(4, 11.0f, 2), new Vector3(0,0,1), new Vector3(0, 1 ,0), mat1, id_counter++));
+        _pyramids.Add(Pyramid.Create(new Vector3(1, 2, 8), new Vector3(4, 11.0f, 2), new Vector3(0, 0, 1), new Vector3(0, 1, 0), mat1, id_counter++));
 
         for (int x = 0; x < 3; x++)
         {
             for (int z = 0; z < 3; z++)
             {
-                float a =0;
+                float a = 0;
                 Vector3 center = new Vector3(x * 8 - 8f, 2f, z * 8 - 8f);
 
-                for (int y = 0; y < _rng.RandomFloat()*400 + 2; y++)
+                for (int y = 0; y < _rng.RandomFloat() * 400 + 2; y++)
                 {
-                    a += _rng.RandomFloat()*0.01f - 0.005f; 
+                    a += _rng.RandomFloat() * 0.01f - 0.005f;
                     float h = _rng.RandomFloat() * 0.5f + 0.2f;
                     float w = _rng.RandomFloat() * 0.2f + 3f;
                     float d = _rng.RandomFloat() * 0.2f + 3f;
-                    center += new Vector3(0, h*0.5f, 0);
+                    center += new Vector3(0, h * 0.5f, 0);
                     _cuboids.Add(Cuboid.Create(center, new Vector3(w, h, d), Quaternion.CreateFromAxisAngle(Vector3.UnitY, a * 2 * MathF.PI), mat1, id_counter++));
-                    center += new Vector3(_rng.RandomFloat()*0.1f, h*0.5f, _rng.RandomFloat()*0.1f);
+                    center += new Vector3(_rng.RandomFloat() * 0.1f, h * 0.5f, _rng.RandomFloat() * 0.1f);
                 }
             }
         }
@@ -234,7 +234,7 @@ public class DirectLighting5 : IGenerator
         Line sl;
 
         float yStep = paper.Y / numShadowLines;
-        Parallel.For(-1, numShadowLines+2, s =>
+        Parallel.For(-1, numShadowLines + 2, s =>
         // for (int s=0; s<numLines; s++) 
         {
             Vector3 from = new Vector3(0, yStep * s, 0);
@@ -256,32 +256,32 @@ public class DirectLighting5 : IGenerator
 
                 // if (P.X > 0 && P.X < paper.X && P.Y > 0 && P.Y < paper.Y)
                 // {
-                    Ray ray =  Ray.Create(cam.Origin, cam.LowerLeftCorner + (P.X * cam.Horizontal) / paper.X + (P.Y * cam.Vertical) / paper.Y - cam.Origin);
+                Ray ray = Ray.Create(cam.Origin, cam.LowerLeftCorner + (P.X * cam.Horizontal) / paper.X + (P.Y * cam.Vertical) / paper.Y - cam.Origin);
 
-                    Vector3 hitPoint;
+                Vector3 hitPoint;
 
-                    if (TraceShadow(ref ray, out hitPoint))
+                if (TraceShadow(ref ray, out hitPoint))
+                {
+                    if (!draw)
                     {
-                        if (!draw)
-                        {
-                            draw = true;
-                            P0 = Camera.Project(cam, hitPoint) * paper.X + paperCenter; 
-                        }
-                        P1 = Camera.Project(cam, hitPoint) * paper.X + paperCenter; 
+                        draw = true;
+                        P0 = Camera.Project(cam, hitPoint) * paper.X + paperCenter;
                     }
-                    else
+                    P1 = Camera.Project(cam, hitPoint) * paper.X + paperCenter;
+                }
+                else
+                {
+                    if (draw)
                     {
-                        if (draw)
-                        {
-                            // P1 = P;
-                            sl = new Line();
-                            sl.type = LineType.Straight;
-                            sl.acceleration = Acceleration.Single;
-                            sl.points = new Vector3[] { P0, P1 };
-                            Data.lines.Add(sl);
-                            draw = false;
-                        }
+                        // P1 = P;
+                        sl = new Line();
+                        sl.type = LineType.Straight;
+                        sl.acceleration = Acceleration.Single;
+                        sl.points = new Vector3[] { P0, P1 };
+                        Data.lines.Add(sl);
+                        draw = false;
                     }
+                }
                 // }
                 // else
                 // {
@@ -332,7 +332,7 @@ public class DirectLighting5 : IGenerator
             if (PCam.X > 0 && PCam.X < paper.X && PCam.Y > 0 && PCam.Y < paper.Y)
             {
                 // if (TraceVisible(P, cam.Origin, parentID) && TraceVisible(P, _lights[0].Position, -2))
-                if (TraceVisible(P,cam.Origin, parentID)) 
+                if (TraceVisible(P, cam.Origin, parentID))
                 {
                     if (!draw)
                     {
@@ -354,7 +354,9 @@ public class DirectLighting5 : IGenerator
                     }
                 }
 
-            } else {
+            }
+            else
+            {
                 if (draw)
                 {
                     P1 = PCam;

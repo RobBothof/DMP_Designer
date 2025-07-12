@@ -31,15 +31,17 @@ public class CubesA2_3 : IGenerator
         // return (int)((Math.Max(0,Vector3.Dot(normal,SpotLight)))*(Math.Max(0,Vector3.Dot(normal,SpotLight)))*3);
         if (Vector3.Dot(normal, SpotLight) > 0.6)
         {
-            return (int) (size*0.75f);
+            return (int)(size * 0.75f);
         }
         else
         {
             if (Vector3.Dot(normal, SpotLight) > 0)
             {
-                return (int) (size*0.4f);
-            } else {
-            return 0;
+                return (int)(size * 0.4f);
+            }
+            else
+            {
+                return 0;
             }
         }
     }
@@ -329,7 +331,7 @@ public class CubesA2_3 : IGenerator
             }
 
 
-            int shadeStep = Shade2(worldNormal2,size);
+            int shadeStep = Shade2(worldNormal2, size);
             for (int s = 1; s < shadeStep; s++)
             {
                 l.points = new Vector3[] { interpolate(P6, P5, s / (float)shadeStep), interpolate(P7, P8, s / (float)shadeStep) };
@@ -363,7 +365,7 @@ public class CubesA2_3 : IGenerator
                 DepthCheckAndAdd(l);
             }
 
-            int shadeStep = Shade2(worldNormal3,size);
+            int shadeStep = Shade2(worldNormal3, size);
             for (int s = 1; s < shadeStep; s++)
             {
                 l.points = new Vector3[] { interpolate(P2, P3, s / (float)shadeStep), interpolate(P6, P7, s / (float)shadeStep) };
@@ -398,7 +400,7 @@ public class CubesA2_3 : IGenerator
                 DepthCheckAndAdd(l);
             }
 
-            int shadeStep = Shade2(worldNormal4,size);
+            int shadeStep = Shade2(worldNormal4, size);
             for (int s = 1; s < shadeStep; s++)
             {
                 l.points = new Vector3[] { interpolate(P1, P4, s / (float)shadeStep), interpolate(P5, P8, s / (float)shadeStep) };
@@ -434,7 +436,7 @@ public class CubesA2_3 : IGenerator
             }
 
 
-            int shadeStep = Shade2(worldNormal5,size);
+            int shadeStep = Shade2(worldNormal5, size);
             for (int s = 1; s < shadeStep; s++)
             {
                 l.points = new Vector3[] { interpolate(P5, P1, s / (float)shadeStep), interpolate(P6, P2, s / (float)shadeStep) };
@@ -467,7 +469,7 @@ public class CubesA2_3 : IGenerator
                 DepthCheckAndAdd(l);
             }
 
-            int shadeStep = Shade2(worldNormal6,size);
+            int shadeStep = Shade2(worldNormal6, size);
             for (int s = 1; s < shadeStep; s++)
             {
                 l.points = new Vector3[] { interpolate(P4, P8, s / (float)shadeStep), interpolate(P3, P7, s / (float)shadeStep) };
@@ -523,7 +525,7 @@ public class CubesA2_3 : IGenerator
 
 
 
-    public void Generate(int seed)
+    public void Generate(int seed, CancellationToken token)
     {
         Data.lines.Clear();
         Data.dots.Clear();
@@ -532,7 +534,7 @@ public class CubesA2_3 : IGenerator
         Array.Fill(Data.depthMap, UInt16.MaxValue);
 
         _rand = new Random(seed);
-       
+
         _rand = new Random(1729113091);
 
         // for (int i = 0; i < 35; i++) 
@@ -555,7 +557,7 @@ public class CubesA2_3 : IGenerator
         for (int i = 0; i < 15; i++)
         {
             // Cube(new Vector3(_rand.NextSingle()*210-105, _rand.NextSingle()*300-150, -750), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(_rand.NextSingle(), _rand.NextSingle(), _rand.NextSingle())), (float)Math.PI * 2 * _rand.NextSingle()));
-            Cube(new Vector3(_rand.NextSingle()*150-75, _rand.NextSingle()*200-100, -750), _rand.NextSingle() * 100 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(1,0,1)), (float)Math.PI * 2 * _rand.NextSingle()));
+            Cube(new Vector3(_rand.NextSingle() * 150 - 75, _rand.NextSingle() * 200 - 100, -750), _rand.NextSingle() * 100 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(1, 0, 1)), (float)Math.PI * 2 * _rand.NextSingle()));
             // Cube(new Vector3(_rand.NextSingle()*210-105, _rand.NextSingle()*300-150, -750), _rand.NextSingle() * 50 + 10, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(0,1,0)), 0.4f));
         }
 

@@ -27,11 +27,11 @@ public class DirectLighting4 : IGenerator
     /// </summary>
     int stepSize = 16;
     // int stepSize = 1024;
-    
+
 
     private RandomRobber _rng;
 
-    public void Generate(int seed)
+    public void Generate(int seed, CancellationToken token)
     {
 
         paper = new Vector3(Data.paperSize.X * Data.stepsPerMM, Data.paperSize.Y * Data.stepsPerMM, 0);
@@ -186,13 +186,13 @@ public class DirectLighting4 : IGenerator
 
         // Draw Shadow Lines
 
-        
+
         Line sl;
         int numLines = 2500;
 
         float Ystep = paper.Y / numLines;
         // Parallel.For(0, numLines, s =>
-        for (int s=0; s<numLines; s++) 
+        for (int s = 0; s < numLines; s++)
         {
 
             Vector3 from = new Vector3(0, Ystep * s, 0);
@@ -266,7 +266,7 @@ public class DirectLighting4 : IGenerator
             }
         }
         // );
-        
+
     }
 
     // Check if a line is visible, split line if needed and project to paper
@@ -447,14 +447,14 @@ public class DirectLighting4 : IGenerator
                 // }
                 // else
                 // {
-                    Ray shadowRay = Ray.Create(hit.Position, ldir);
-                    for (int j = 0; j < _shapes.Count; j++)
+                Ray shadowRay = Ray.Create(hit.Position, ldir);
+                for (int j = 0; j < _shapes.Count; j++)
+                {
+                    if (_shapes[j].Hit(shadowRay, 0.001f, 9999999f, out RayHit tempHit))
                     {
-                        if (_shapes[j].Hit(shadowRay, 0.001f, 9999999f, out RayHit tempHit))
-                        {
-                            inShadow = true;
-                        }
+                        inShadow = true;
                     }
+                }
                 // }
             }
         }

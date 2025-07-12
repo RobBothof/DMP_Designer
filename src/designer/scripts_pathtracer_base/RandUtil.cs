@@ -9,7 +9,7 @@ namespace PathTracer
         {
             _state = seed;
         }
-    
+
         public void SetSeed(uint seed)
         {
             _state = seed;
@@ -50,7 +50,7 @@ namespace PathTracer
 
         public Vector3 RandomUnitVector()
         {
-            Vector3 v =  2f * new Vector3(RandomFloat(), RandomFloat(), RandomFloat()) - Vector3.One;
+            Vector3 v = 2f * new Vector3(RandomFloat(), RandomFloat(), RandomFloat()) - Vector3.One;
             return Vector3.Normalize(v);
         }
 

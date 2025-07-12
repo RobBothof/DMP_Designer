@@ -13,7 +13,7 @@ namespace RayTracer
         public int ID;
         // public Vector3[] Vertices;
 
-        public static Cuboid Create(Vector3 center, Vector3 size, Quaternion orientation, Material m, int ID=-1)
+        public static Cuboid Create(Vector3 center, Vector3 size, Quaternion orientation, Material m, int ID = -1)
         {
             Cuboid c = new Cuboid();
             c.Center = center;
@@ -33,14 +33,14 @@ namespace RayTracer
             c.Quads = new Quad[6];
 
             // sides
-            c.Quads[0] = Quad.Create(P1, P2-P1, P4-P1, m, ID);
-            c.Quads[1] = Quad.Create(P3, P2-P3, P7-P3, m, ID);
-            c.Quads[2] = Quad.Create(P6, P5-P6, P7-P6, m, ID);
-            c.Quads[3] = Quad.Create(P8, P5-P8, P4-P8, m, ID);
-            c.Quads[4] = Quad.Create(P3, P7-P3, P4-P3, m, ID);
-            c.Quads[5] = Quad.Create(P1, P5-P1, P2-P1, m, ID);
+            c.Quads[0] = Quad.Create(P1, P2 - P1, P4 - P1, m, ID);
+            c.Quads[1] = Quad.Create(P3, P2 - P3, P7 - P3, m, ID);
+            c.Quads[2] = Quad.Create(P6, P5 - P6, P7 - P6, m, ID);
+            c.Quads[3] = Quad.Create(P8, P5 - P8, P4 - P8, m, ID);
+            c.Quads[4] = Quad.Create(P3, P7 - P3, P4 - P3, m, ID);
+            c.Quads[5] = Quad.Create(P1, P5 - P1, P2 - P1, m, ID);
 
-            return c;    
-        }    
+            return c;
+        }
     }
 }

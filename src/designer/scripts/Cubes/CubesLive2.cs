@@ -331,7 +331,7 @@ public class CubesLive2 : IGenerator
             }
 
 
-            int shadeStep = Shade2(worldNormal2,size);
+            int shadeStep = Shade2(worldNormal2, size);
             for (int s = 1; s < shadeStep; s++)
             {
                 l.points = new Vector3[] { interpolate(P6, P5, s / (float)shadeStep), interpolate(P7, P8, s / (float)shadeStep) };
@@ -365,7 +365,7 @@ public class CubesLive2 : IGenerator
                 DepthCheckAndAdd(l);
             }
 
-            int shadeStep = Shade2(worldNormal3,size);
+            int shadeStep = Shade2(worldNormal3, size);
             for (int s = 1; s < shadeStep; s++)
             {
                 l.points = new Vector3[] { interpolate(P2, P3, s / (float)shadeStep), interpolate(P6, P7, s / (float)shadeStep) };
@@ -400,7 +400,7 @@ public class CubesLive2 : IGenerator
                 DepthCheckAndAdd(l);
             }
 
-            int shadeStep = Shade2(worldNormal4,size);
+            int shadeStep = Shade2(worldNormal4, size);
             for (int s = 1; s < shadeStep; s++)
             {
                 l.points = new Vector3[] { interpolate(P1, P4, s / (float)shadeStep), interpolate(P5, P8, s / (float)shadeStep) };
@@ -436,7 +436,7 @@ public class CubesLive2 : IGenerator
             }
 
 
-            int shadeStep = Shade2(worldNormal5,size);
+            int shadeStep = Shade2(worldNormal5, size);
             for (int s = 1; s < shadeStep; s++)
             {
                 l.points = new Vector3[] { interpolate(P5, P1, s / (float)shadeStep), interpolate(P6, P2, s / (float)shadeStep) };
@@ -469,7 +469,7 @@ public class CubesLive2 : IGenerator
                 DepthCheckAndAdd(l);
             }
 
-            int shadeStep = Shade2(worldNormal6,size);
+            int shadeStep = Shade2(worldNormal6, size);
             for (int s = 1; s < shadeStep; s++)
             {
                 l.points = new Vector3[] { interpolate(P4, P8, s / (float)shadeStep), interpolate(P3, P7, s / (float)shadeStep) };
@@ -525,7 +525,7 @@ public class CubesLive2 : IGenerator
 
 
 
-    public void Generate(int seed)
+    public void Generate(int seed, CancellationToken token)
     {
         Data.lines.Clear();
         Data.dots.Clear();
@@ -536,12 +536,12 @@ public class CubesLive2 : IGenerator
         _rand = new Random(seed);
         _rand = new Random(1875561630);
 
-        for (int i = 0; i < 20; i++) 
+        for (int i = 0; i < 20; i++)
         {
             float x = _rand.NextSingle() * 800 - 400;
             float z = _rand.NextSingle() * 500;
 
-            Cube(new Vector3(x * 0.25f, (_rand.NextSingle() * 100 - 50) * 0.2f, -z - 550), 6+15*_rand.NextSingle(), Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(_rand.NextSingle(), _rand.NextSingle(), _rand.NextSingle())), (float)Math.PI*2*_rand.NextSingle()));
+            Cube(new Vector3(x * 0.25f, (_rand.NextSingle() * 100 - 50) * 0.2f, -z - 550), 6 + 15 * _rand.NextSingle(), Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(_rand.NextSingle(), _rand.NextSingle(), _rand.NextSingle())), (float)Math.PI * 2 * _rand.NextSingle()));
 
         }
 
@@ -557,15 +557,15 @@ public class CubesLive2 : IGenerator
         for (int i = 0; i < 9; i++)
         {
         }
-        Cube(new Vector3(-4 * 33    , 6, -750), 18, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(_rand.NextSingle(), _rand.NextSingle(), _rand.NextSingle())), (float)Math.PI * 2 * _rand.NextSingle()));
+        Cube(new Vector3(-4 * 33, 6, -750), 18, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(_rand.NextSingle(), _rand.NextSingle(), _rand.NextSingle())), (float)Math.PI * 2 * _rand.NextSingle()));
         // Cube(new Vector3(-3.2f * 33 , 3, -750), 25, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(_rand.NextSingle(), _rand.NextSingle(), _rand.NextSingle())), (float)Math.PI * 2 * _rand.NextSingle()));
-        Cube(new Vector3(-2.2f * 33 , 8, -750), 30, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(_rand.NextSingle(), _rand.NextSingle(), _rand.NextSingle())), (float)Math.PI * 2 * _rand.NextSingle()));
-        Cube(new Vector3(-1.1f * 33 , 1, -750), 27, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(_rand.NextSingle(), _rand.NextSingle(), _rand.NextSingle())), (float)Math.PI * 2 * _rand.NextSingle()));
-        Cube(new Vector3(0 * 33     , 7, -750), 24, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(_rand.NextSingle(), _rand.NextSingle(), _rand.NextSingle())), (float)Math.PI * 2 * _rand.NextSingle()));
+        Cube(new Vector3(-2.2f * 33, 8, -750), 30, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(_rand.NextSingle(), _rand.NextSingle(), _rand.NextSingle())), (float)Math.PI * 2 * _rand.NextSingle()));
+        Cube(new Vector3(-1.1f * 33, 1, -750), 27, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(_rand.NextSingle(), _rand.NextSingle(), _rand.NextSingle())), (float)Math.PI * 2 * _rand.NextSingle()));
+        Cube(new Vector3(0 * 33, 7, -750), 24, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(_rand.NextSingle(), _rand.NextSingle(), _rand.NextSingle())), (float)Math.PI * 2 * _rand.NextSingle()));
         // Cube(new Vector3(1 * 33     , 0, -750), 22, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(_rand.NextSingle(), _rand.NextSingle(), _rand.NextSingle())), (float)Math.PI * 2 * _rand.NextSingle()));
         // Cube(new Vector3(2 * 33     , -3, -750), 20, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(_rand.NextSingle(), _rand.NextSingle(), _rand.NextSingle())), (float)Math.PI * 2 * _rand.NextSingle()));
-        Cube(new Vector3(3 * 33     , -5, -750), 17, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(_rand.NextSingle(), _rand.NextSingle(), _rand.NextSingle())), (float)Math.PI * 2 * _rand.NextSingle()));
-        Cube(new Vector3(4 * 33     , -2, -750), 12, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(_rand.NextSingle(), _rand.NextSingle(), _rand.NextSingle())), (float)Math.PI * 2 * _rand.NextSingle()));
+        Cube(new Vector3(3 * 33, -5, -750), 17, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(_rand.NextSingle(), _rand.NextSingle(), _rand.NextSingle())), (float)Math.PI * 2 * _rand.NextSingle()));
+        Cube(new Vector3(4 * 33, -2, -750), 12, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(_rand.NextSingle(), _rand.NextSingle(), _rand.NextSingle())), (float)Math.PI * 2 * _rand.NextSingle()));
 
 
 
@@ -575,8 +575,8 @@ public class CubesLive2 : IGenerator
         Line l;
 
 
-        float skip =_rand.NextSingle(); 
-        skip =_rand.NextSingle(); 
+        float skip = _rand.NextSingle();
+        skip = _rand.NextSingle();
 
         // skip =_rand.NextSingle(); 
         // skip =_rand.NextSingle(); 
@@ -584,13 +584,13 @@ public class CubesLive2 : IGenerator
         // skip =_rand.NextSingle(); 
 
         // Cube(new Vector3(1 * 33     , 0, -750), 22, Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(_rand.NextSingle(), _rand.NextSingle(), _rand.NextSingle())), (float)Math.PI * 2 * _rand.NextSingle()));
-        
-        for (int i = 0; i < 60; i++) 
+
+        for (int i = 0; i < 60; i++)
         {
             float x = _rand.NextSingle() * 800 - 400;
             float z = _rand.NextSingle() * 500;
 
-            Cube(new Vector3(x * 0.25f, (_rand.NextSingle() * 120 - 80) * 0.2f, -z - 550), 4+6*_rand.NextSingle(), Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(_rand.NextSingle(), _rand.NextSingle(), _rand.NextSingle())), (float)Math.PI*2*_rand.NextSingle()));
+            Cube(new Vector3(x * 0.25f, (_rand.NextSingle() * 120 - 80) * 0.2f, -z - 550), 4 + 6 * _rand.NextSingle(), Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(_rand.NextSingle(), _rand.NextSingle(), _rand.NextSingle())), (float)Math.PI * 2 * _rand.NextSingle()));
 
         }
 

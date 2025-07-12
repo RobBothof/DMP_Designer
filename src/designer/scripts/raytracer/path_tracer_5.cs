@@ -11,7 +11,7 @@ using PathTracer;
 using System.Threading;
 using System.Threading.Tasks;
 
-public class PathTracer5: IGenerator
+public class PathTracer5 : IGenerator
 {
     public const uint NumSamples = 10;
 
@@ -23,7 +23,7 @@ public class PathTracer5: IGenerator
 
     private RandomRobber _rng;
 
-    public void Generate(int seed)
+    public void Generate(int seed, CancellationToken token)
     {
         Data.lines.Clear();
         Data.dots.Clear();
@@ -68,7 +68,7 @@ public class PathTracer5: IGenerator
             Material.Lambertian(base_color),
             Material.Lambertian(base_color),
 
-            
+
             Material.Lambertian(base_color),
             Material.Lambertian(base_color),
             Material.Lambertian(base_color),
@@ -100,7 +100,7 @@ public class PathTracer5: IGenerator
                 color /= NumSamples;
 
                 double gamma = 2.2f;
-                color = (float) Math.Pow(color, 1.0 / gamma);
+                color = (float)Math.Pow(color, 1.0 / gamma);
                 Data.shadowMap[y * (int)Data.rasterWidth + x] = (ushort)(MathF.Max(MathF.Min(color, 1.0f), 0.0f) * ushort.MaxValue);
             }
 
@@ -126,13 +126,13 @@ public class PathTracer5: IGenerator
         {
             // if (_materials[i].Type != MaterialType.Emissive)
             // {
-                if (_shapes[i].Hit(ray, 0.001f, closest, out RayHit tempHit))
-                {
-                    hitAnything = true;
-                    hit = tempHit;
-                    hitID = i;
-                    closest = hit.T;
-                }
+            if (_shapes[i].Hit(ray, 0.001f, closest, out RayHit tempHit))
+            {
+                hitAnything = true;
+                hit = tempHit;
+                hitID = i;
+                closest = hit.T;
+            }
             // }
         }
 
@@ -167,7 +167,7 @@ public class PathTracer5: IGenerator
                     Vector3 direction = hit.Normal + _rng.RandomOnHemisphere(hit.Normal);
                     scatteredRay = Ray.Create(hit.Position, direction);
                     attenuation = _materials[hitID].Albedo;
-                    emission = _materials[hitID].Emission;;
+                    emission = _materials[hitID].Emission; ;
 
                     // sample light
 
@@ -205,10 +205,10 @@ public class PathTracer5: IGenerator
                             }
                         }
                     }
-                    
+
                     return true;
                 }
-    
+
             case MaterialType.Emissive:
                 {
                     emission = _materials[hitID].Emission;
@@ -218,14 +218,14 @@ public class PathTracer5: IGenerator
                 }
 
             case MaterialType.Metal:
-            {
-                emission = _materials[hitID].Emission;
-                Vector3 reflected = Vector3.Reflect(Vector3.Normalize(ray.Direction), hit.Normal);
-                scatteredRay = Ray.Create(hit.Position, reflected + _materials[hitID].FuzzOrRefIndex * _rng.RandomInUnitSphere());
-                attenuation = _materials[hitID].Albedo;
-                return Vector3.Dot(scatteredRay.Direction, hit.Normal) > 0;
-            }
-    
+                {
+                    emission = _materials[hitID].Emission;
+                    Vector3 reflected = Vector3.Reflect(Vector3.Normalize(ray.Direction), hit.Normal);
+                    scatteredRay = Ray.Create(hit.Position, reflected + _materials[hitID].FuzzOrRefIndex * _rng.RandomInUnitSphere());
+                    attenuation = _materials[hitID].Albedo;
+                    return Vector3.Dot(scatteredRay.Direction, hit.Normal) > 0;
+                }
+
             default:
                 attenuation = 0;
                 emission = 0;

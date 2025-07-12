@@ -18,7 +18,7 @@ namespace RayTracer
 
         public static Material Lambertian(float albedo, float base_shadow)
         {
-            Material m = new Material(); 
+            Material m = new Material();
             m.Shadow = base_shadow;
             m.Type = MaterialType.Lambertian;
             m.Albedo = albedo;
@@ -30,7 +30,7 @@ namespace RayTracer
 
         public static Material ShadowMatte(float albedo, float base_shadow)
         {
-            Material m = new Material(); 
+            Material m = new Material();
             m.Shadow = base_shadow;
             m.Type = MaterialType.ShadowMatte;
             m.Albedo = albedo;
@@ -42,7 +42,7 @@ namespace RayTracer
 
         public static Material Metal(float albedo, float fuzz)
         {
-            Material m = new Material(); 
+            Material m = new Material();
             m.Type = MaterialType.Metal;
             m.Albedo = albedo;
             m.Emission = 0;
@@ -53,7 +53,7 @@ namespace RayTracer
 
         public static Material Dielectric(float refIndex)
         {
-            Material m = new Material(); 
+            Material m = new Material();
             m.Type = MaterialType.Dielectric;
             m.Albedo = 0;
             m.Emission = 0;
@@ -64,7 +64,7 @@ namespace RayTracer
 
         public static Material Emissive(float emission)
         {
-            Material m = new Material(); 
+            Material m = new Material();
             m.Type = MaterialType.Emissive;
             m.Albedo = 0;
             m.Emission = emission;
