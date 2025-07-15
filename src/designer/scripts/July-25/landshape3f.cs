@@ -14,50 +14,8 @@ using System.Net.Http.Headers;
 using System.Collections.Concurrent;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-public class Tower
-{
-    private int _type;
-    private int _LOD;
 
-    private Vector3 _position;
-    private Vector3 _size;
-    private Quaternion _orientation;
-
-    private List<Polygon> _polygons;
-
-    public Vector3 Position { get { return _position; } }
-    public Vector3 Size { get { return _size; } }
-    public Quaternion Orientation { get { return _orientation; } }
-
-    public Tower(int type, Vector3 position, Vector3 size, Quaternion orientation)
-    {
-        this._type = type;
-        this._LOD = 1;
-        this._position = position;
-        this._size = size;
-        this._orientation = orientation;
-    }
-
-
-    public void Generate(int LOD)
-    {
-        _polygons = new List<Polygon>();
-
-        Polygon p = new([new Vector3(0, 0, 0), new Vector3(0, 0, 10), new Vector3(10, 0, 10), new Vector3(10, 0, 0)], 1)
-        {
-            HiddenEdges = [false, false, false]
-        };
-
-        _polygons.Add(p);
-    }
-
-    public List<Polygon> GetPolygons()
-    {
-        return _polygons;
-    }
-}
-
-public class City1 : IGenerator
+public class LandShape3f : IGenerator
 {
     private List<IShape> _shapes;
     private List<Light> _lights;
@@ -79,10 +37,10 @@ public class City1 : IGenerator
     /// </summary>
     /// 
 
-    int stepSize = 1024;
-    // int stepSize = 16;
+    // int stepSize = 1024;
+    int stepSize = 64;
 
-    int numShadowLines = 600;
+    int numShadowLines = 1000;
 
     private RandomRobber _rng;
     private CancellationToken _cancellationToken;
@@ -102,9 +60,9 @@ public class City1 : IGenerator
 
         cam = Camera.Create(
             new Vector3(90, 40f, 90),
-            new Vector3(-6, 0f, 0),
-            Vector3.UnitY,
-            90f,
+            new Vector3(-1, 5f, 0),
+            -Vector3.UnitY,
+            95f,
             (float)Data.rasterWidth / Data.rasterHeight,
             aperture,
             distToFocus);
@@ -112,6 +70,7 @@ public class City1 : IGenerator
         Array.Fill(Data.depthMap, (ushort)(UInt16.MaxValue / 2));
         Array.Fill(Data.shadowMap, (ushort)(UInt16.MaxValue / 2));
 
+        seed = 1898010300;
         _rng = new RandomRobber((uint)seed);
 
         Material mat1 = Material.Lambertian(0.7f, 0.0f);
@@ -119,16 +78,17 @@ public class City1 : IGenerator
 
         _lights = new List<Light>
         {
-            new Light { Position = new Vector3(2000.0f, 4500.0f, -1000.0f), Intensity = 5.0f }
+            // new Light { Position = new Vector3(2000.0f, 4500.0f, -1000.0f), Intensity = 5.0f }
+            new Light { Position = new Vector3(0.0f, 0.0f, 1000.0f), Intensity = 5.0f }
         };
 
-        _towers = new List<Tower>();
-        _towers.Add(new Tower(1, new Vector3(0, 0, 0), new Vector3(10, 30, 10), Quaternion.Identity));
+        // _towers = new List<Tower>();
+        // _towers.Add(new Tower(1, new Vector3(0, 0, 0), new Vector3(10, 30, 10), Quaternion.Identity));
 
-        foreach (Tower tower in _towers)
-        {
-            tower.Generate(1);
-        }
+        // foreach (Tower tower in _towers)
+        // {
+        //     tower.Generate(1);
+        // }
 
         _cuboids = new List<Cuboid>();
         _pyramids = new List<Pyramid>();
@@ -137,10 +97,109 @@ public class City1 : IGenerator
         int id_counter = 10;
 
         // _cuboids.Add(Cuboid.Create(new Vector3(20, 10, 20), new Vector3(10f, 1f, 10f), Quaternion.CreateFromAxisAngle(Vector3.UnitX, 0.0f), mat1, id_counter++));
-        _cuboids.Add(Cuboid.Create(new Vector3(0, 0, 0), new Vector3(160f, 1, 160f), Quaternion.CreateFromAxisAngle(Vector3.UnitY, 0.35f * MathF.PI), mat1, id_counter++));
+        // _cuboids.Add(Cuboid.Create(new Vector3(0, 0, 0), new Vector3(160f, 1, 160f), Quaternion.CreateFromAxisAngle(Vector3.UnitY, 0.35f * MathF.PI), mat1, id_counter++));
+
+        // _spheres.Add(Sphere.Create(new Vector3(0, 0, 0), 10f, mat1, id_counter++));
+
+        // for (int i = 0; i < 500; i++)
+        // {
+        //     Vector3 origin = new Vector3(40, 140, 100);
+        //     Vector3 pos = _rng.RandomUnitVector() * 60 - origin;
+        //     // Vector3 size = new Vector3(10, 10, 10) * (0.25f + _rng.RandomFloat() * 0.75f);
+        //     Vector3 size = (_rng.RandomUnitVector()+new Vector3(3, 2, 1)) * 5f * (0.15f + _rng.RandomFloat() * 0.85f);
+
+        //     // Calculate the direction from center to the cube position
+        //     Vector3 dirToSurface = Vector3.Normalize(pos);
+
+        //     // Create a rotation that aligns the Y-axis with this direction
+        //     Quaternion orientation;
+
+        //     // Handle the case where direction is parallel to Y-axis
+        //     if (Math.Abs(dirToSurface.Y) > 0.9999f)
+        //     {
+        //         if (dirToSurface.Y > 0)
+        //             orientation = Quaternion.Identity;  // Already aligned with Y-axis
+        //         else
+        //             orientation = Quaternion.CreateFromAxisAngle(Vector3.UnitX, MathF.PI);  // Rotate 180° around X
+        //     }
+        //     else
+        //     {
+        //         // Calculate rotation from Y-axis to direction
+        //         Vector3 rotAxis = Vector3.Normalize(Vector3.Cross(Vector3.UnitY, dirToSurface));
+        //         float angle = MathF.Acos(Vector3.Dot(Vector3.UnitY, dirToSurface));
+        //         orientation = Quaternion.CreateFromAxisAngle(rotAxis, angle);
+        //     }
+
+        //     // Quaternion orientation = Quaternion.CreateFromAxisAngle(Vector3.Normalize(pos), 0);
+        //     _cuboids.Add(Cuboid.Create(pos, size, orientation, mat1, id_counter++));
+        // }
 
 
+        for (int i = 0; i < 5000; i++)
+        {
+            Vector3 origin = new Vector3(2, -17, 2);
+            Vector3 pos = _rng.RandomUnitVector() * 55 - origin;
+            // Vector3 size = new Vector3(10, 10, 10) * (0.25f + _rng.RandomFloat() * 0.75f);
+            Vector3 size = (_rng.RandomUnitVector() + new Vector3(5, 2, 1)) * 5f * (0.15f + _rng.RandomFloat() * 0.85f);
 
+            // Calculate the direction from center to the cube position
+            Vector3 dirToSurface = Vector3.Normalize(pos);
+
+            // Create a rotation that aligns the Y-axis with this direction
+            Quaternion orientation;
+
+            // Handle the case where direction is parallel to Y-axis
+            if (Math.Abs(dirToSurface.Y) > 0.9999f)
+            {
+                if (dirToSurface.Y > 0)
+                    orientation = Quaternion.Identity;  // Already aligned with Y-axis
+                else
+                    orientation = Quaternion.CreateFromAxisAngle(Vector3.UnitX, MathF.PI);  // Rotate 180° around X
+            }
+            else
+            {
+                // Calculate rotation from Y-axis to direction
+                Vector3 rotAxis = Vector3.Normalize(Vector3.Cross(Vector3.UnitY, dirToSurface));
+                float angle = MathF.Acos(Vector3.Dot(Vector3.UnitY, dirToSurface));
+                orientation = Quaternion.CreateFromAxisAngle(rotAxis, angle);
+            }
+
+            // Quaternion orientation = Quaternion.CreateFromAxisAngle(Vector3.Normalize(pos), 0);
+            _cuboids.Add(Cuboid.Create(pos, size, orientation, mat1, id_counter++));
+        }
+
+        for (int i = 0; i < 200; i++)
+        {
+            Vector3 origin = new Vector3(5, -17, 2);
+            Vector3 pos = new Vector3(_rng.RandomFloat(), _rng.RandomFloat() * 1.5f - 0.77f, _rng.RandomFloat() * 1.1f) * 62 - origin;
+            // Vector3 size = new Vector3(10, 10, 10) * (0.25f + _rng.RandomFloat() * 0.75f);
+            Vector3 size = (_rng.RandomUnitVector() + new Vector3(5, 2, 1)) * 3f * (0.15f + _rng.RandomFloat() * 0.85f);
+
+            // Calculate the direction from center to the cube position
+            Vector3 dirToSurface = Vector3.Normalize(pos);
+
+            // Create a rotation that aligns the Y-axis with this direction
+            Quaternion orientation;
+
+            // Handle the case where direction is parallel to Y-axis
+            if (Math.Abs(dirToSurface.Y) > 0.9999f)
+            {
+                if (dirToSurface.Y > 0)
+                    orientation = Quaternion.Identity;  // Already aligned with Y-axis
+                else
+                    orientation = Quaternion.CreateFromAxisAngle(Vector3.UnitX, MathF.PI);  // Rotate 180° around X
+            }
+            else
+            {
+                // Calculate rotation from Y-axis to direction
+                Vector3 rotAxis = Vector3.Normalize(Vector3.Cross(Vector3.UnitY, dirToSurface));
+                float angle = MathF.Acos(Vector3.Dot(Vector3.UnitY, dirToSurface));
+                orientation = Quaternion.CreateFromAxisAngle(rotAxis, angle);
+            }
+
+            // Quaternion orientation = Quaternion.CreateFromAxisAngle(Vector3.Normalize(pos), 0);
+            _cuboids.Add(Cuboid.Create(pos, size, orientation, mat1, id_counter++));
+        }
         _shapes = new List<IShape>();
 
 
@@ -150,7 +209,7 @@ public class City1 : IGenerator
         _cancellationToken.ThrowIfCancellationRequested();
 
         // The collection of shapes is used to trace visibility and shadows.
-        // _shapes.AddRange(_cuboids.SelectMany(c => c.Quads).Cast<IShape>());
+        _shapes.AddRange(_cuboids.SelectMany(c => c.Quads).Cast<IShape>());
         // _shapes.AddRange(_pyramids.SelectMany(p => p.Triangles).Cast<IShape>());
         // _shapes.AddRange(_spheres.Cast<IShape>());
 
@@ -207,7 +266,20 @@ public class City1 : IGenerator
 
         // Draw Shadow Lines
         float yStep = paper.Y / numShadowLines;
-        Parallel.For(-1, numShadowLines + 2, s =>
+
+        // Create array of indices and shuffle them
+        int[] shadowLineIndices = Enumerable.Range(-1, numShadowLines + 3).ToArray();
+        for (int i = shadowLineIndices.Length - 1; i > 0; i--)
+        {
+            int j = (int)(_rng.RandomFloat() * (i + 1));
+            // Swap elements
+            int temp = shadowLineIndices[i];
+            shadowLineIndices[i] = shadowLineIndices[j];
+            shadowLineIndices[j] = temp;
+        }
+
+        // Use randomized indices for drawing shadow lines
+        Parallel.ForEach(shadowLineIndices, s =>
         {
             _cancellationToken.ThrowIfCancellationRequested();
             Vector3 from = new Vector3(0, yStep * s, 0);
@@ -222,6 +294,7 @@ public class City1 : IGenerator
 
             for (int i = 0; i < xSteps; i++)
             {
+                _rng.RandomFloat();
                 _cancellationToken.ThrowIfCancellationRequested();
                 P += new Vector3(stepSize, 0, 0);
 
@@ -239,33 +312,36 @@ public class City1 : IGenerator
                 }
                 if (startDraw)
                 {
-                    // P1 = P;
-                    Data.lines.Add(new Line
+                    if (_rng.RandomFloat() < 0.75f)
                     {
-                        type = LineType.Straight,
-                        acceleration = Acceleration.Single,
-                        points = new Vector3[] { P0, P1 }
-                    });
+                        // P1 = P;
+                        Data.lines.Add(new Line
+                        {
+                            type = LineType.Straight,
+                            acceleration = Acceleration.Single,
+                            points = new Vector3[] { P0, P1 }
+                        });
+                    }
                     startDraw = false;
                 }
             }
 
             if (startDraw)
             {
-                Data.lines.Add(new Line
+                if (_rng.RandomFloat() < 0.4f)
                 {
-                    type = LineType.Straight,
-                    acceleration = Acceleration.Single,
-                    points = new Vector3[] { P0, P1 }
-                });
+                    Data.lines.Add(new Line
+                    {
+                        type = LineType.Straight,
+                        acceleration = Acceleration.Single,
+                        points = new Vector3[] { P0, P1 }
+                    });
+                }
             }
-        }
-        );
+        });
 
     }
-
-
-
+    
     // Check the lines visibility, split line if needed and project it to paper.
     public void AddLine(Vector3 from, Vector3 to, LineType type, Acceleration acceleration, int parentID)
     {
@@ -291,8 +367,8 @@ public class City1 : IGenerator
                     // Reverse cast a ray from the point to the camera to check if something is obscuring the view.
 
                     // Draw if visible (and optional, not in shadow.)
-                    // if (TraceVisible(P, cam.Origin, parentID) && TraceVisible(P, _lights[0].Position, -2))
-                    if (TraceVisible(P, cam.Origin, parentID))
+                    if (TraceVisible(P, cam.Origin, parentID) && TraceVisible(P, _lights[0].Position, -2))
+                    // if (TraceVisible(P, cam.Origin, parentID))
                     {
                         if (!startDraw)
                         {
