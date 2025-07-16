@@ -312,7 +312,7 @@ public class LandShape3f : IGenerator
                 }
                 if (startDraw)
                 {
-                    if (_rng.RandomFloat() < 0.75f)
+                    if (_rng.RandomFloat() < 0.68f)
                     {
                         // P1 = P;
                         Data.lines.Add(new Line

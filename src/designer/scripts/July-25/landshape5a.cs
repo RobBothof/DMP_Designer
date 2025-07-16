@@ -15,7 +15,7 @@ using System.Collections.Concurrent;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 
-public class LandShape4f : IGenerator
+public class LandShape5a : IGenerator
 {
     private List<IShape> _shapes;
     private List<Light> _lights;
@@ -37,8 +37,8 @@ public class LandShape4f : IGenerator
     /// </summary>
     /// 
 
-    // int stepSize = 1024;
-    int stepSize = 64;
+    int stepSize = 1024;
+    // int stepSize = 64;
 
     int numShadowLines = 1000;
 
@@ -70,7 +70,7 @@ public class LandShape4f : IGenerator
         Array.Fill(Data.depthMap, (ushort)(UInt16.MaxValue / 2));
         Array.Fill(Data.shadowMap, (ushort)(UInt16.MaxValue / 2));
 
-        seed = 962008547; ;
+        // seed = 962008547; 
         _rng = new RandomRobber((uint)seed);
 
         Material mat1 = Material.Lambertian(0.7f, 0.0f);
@@ -78,7 +78,7 @@ public class LandShape4f : IGenerator
 
         _lights = new List<Light>
         {
-            new Light { Position = new Vector3(2000.0f, 4500.0f, -1000.0f), Intensity = 5.0f }
+            new Light { Position = new Vector3(2000.0f, 4500.0f, 1000.0f), Intensity = 5.0f }
         };
 
         // _towers = new List<Tower>();
@@ -134,12 +134,12 @@ public class LandShape4f : IGenerator
         // }
 
 
-        for (int i = 0; i < 5000; i++)
+        for (int i = 0; i < 1000; i++)
         {
-            Vector3 origin = new Vector3(2, -17, 2);
-            Vector3 pos = _rng.RandomUnitVector() * 55 - origin;
+            Vector3 origin = new Vector3(0, -17, 0);
+            Vector3 pos = _rng.RandomUnitVector() * (35 +_rng.RandomFloat()*40) - origin;
             // Vector3 size = new Vector3(10, 10, 10) * (0.25f + _rng.RandomFloat() * 0.75f);
-            Vector3 size = (_rng.RandomUnitVector() + new Vector3(1, 2, 5)) * 5f * (0.15f + _rng.RandomFloat() * 0.85f);
+            Vector3 size = (_rng.RandomUnitVector() + new Vector3(1, 0.2f, 2.5f)) * 5f * (0.15f + _rng.RandomFloat() * 0.85f);
 
             // Calculate the direction from center to the cube position
             Vector3 dirToSurface = Vector3.Normalize(pos);
@@ -167,12 +167,12 @@ public class LandShape4f : IGenerator
             _cuboids.Add(Cuboid.Create(pos, size, orientation, mat1, id_counter++));
         }
 
-        for (int i = 0; i < 200; i++)
+        for (int i = 0; i < 100; i++)
         {
-            Vector3 origin = new Vector3(-5, -22, 2);
-            Vector3 pos = new Vector3(_rng.RandomFloat(), _rng.RandomFloat() * 1.5f - 0.77f, _rng.RandomFloat() * 1.1f) * 60 - origin;
+            Vector3 origin = new Vector3(0, -22, 0);
+            Vector3 pos = new Vector3(_rng.RandomFloat(), _rng.RandomFloat() * 1.5f - 1.0f, _rng.RandomFloat() * 1.1f) * 65 - origin;
             // Vector3 size = new Vector3(10, 10, 10) * (0.25f + _rng.RandomFloat() * 0.75f);
-            Vector3 size = (_rng.RandomUnitVector() + new Vector3(1, 2, 3)) * 2f * (0.15f + _rng.RandomFloat() * 0.85f);
+            Vector3 size = (_rng.RandomUnitVector() + new Vector3(1.25f, 0.75f, 1)) * 2f * (0.15f + _rng.RandomFloat() * 0.85f);
 
             // Calculate the direction from center to the cube position
             Vector3 dirToSurface = Vector3.Normalize(pos);
